@@ -197,15 +197,15 @@ function addTriple(){
 			toadd+="<a href=\""+$('#subject').val()+"\" target=\"_blank\">"+
 			($('#subject').val().includes("#")?$("#subject").val().substring($("#subject").val().indexOf('#')+1):$("#subject").val())+"</a>"
 		}else{
-			toadd+=$('#subject').val();
+			toadd+=$('#subject').val().trim().replace(" ","_");
 		}
 		toadd2=""
 		if($('#object').val().includes("http")){
 			toadd2+="<a href=\""+$('#object').val()+"\" target=\"_blank\">"+
 			($('#object').val().includes("#")?$("#object").val().substring($("#object").val().indexOf('#')+1):$("#object").val())+"</a>"
 		}else{
-			toadd2+="<a href=\"http://stolpersteine.i3mainz.de#"+$('#object').val()+"\" target=\"_blank\">"
-			toadd2+=$('#object').val()+"</a>";
+			toadd2+="<a href=\"http://stolpersteine.i3mainz.de#"+$('#object').val().trim().replace(" ","_")+"\" target=\"_blank\">"
+			toadd2+=$('#object').val().trim().replace(" ","_")+"</a>";
 		}
 		$('#relations').append(toadd+" - <a href=\""+$("option:selected",$('#predicate')).val()+
 				"\" target=\"_blank\">"+$("option:selected",$('#predicate')).text()+
@@ -297,12 +297,33 @@ function displayContents(contents) {
 			  first=false;
 			  continue;
 		  }
-		  if(!splitted[elem]==""){
+		  //alert(splitted[el)
+		  if(splitted[elem]!=""){
 			collectRDF[i]=splitted[elem]+" \n";
-			splitted2=splitted[elem].replace("<"," - ").replace(">"," - ").split("-")
+			splitted2=splitted[elem].split(" ") //.replace("<"," - ").replace(">"," - ")
 			//alert(splitted2)
-		  	$('#relations').append("<li id=\"li-"+i+++"\">"+splitted2[0]+" - <a href=\""+splitted2[1]+"\">"
-			+splitted2[1]+"</a> - "+splitted2[2]+"</li>")
+			//alert(splitted2[1])
+			//alert(i)
+			relation="<li id=\"li-"+i+++"\">";
+			if(splitted2[0].includes("<") && splitted2[0].includes(">")){
+				reformatted=splitted2[0].replace("<","").replace(">","").trim()
+				relation+="<a target=\"_blank\" href=\""+reformatted+"\">"+reformatted.substring(findLastNonAlpha(reformatted))+"</a>"
+			}else{
+				relation+=splitted2[0]
+			}		
+			reformatted=splitted2[1].replace("<","").replace(">","").trim();			
+		  	relation+=" - <a target=\"_blank\" href=\""+splitted2[1].replace("<","").replace(">","").trim()+"\">"+$("#"+reformatted.substring(findLastNonAlpha(reformatted))).text()+"</a> - "
+			//alert("#"+reformatted.substring(findLastNonAlpha(reformatted))).text())
+
+			if(splitted2[2].includes("<") && splitted2[2].includes(">")){
+				reformatted=splitted2[2].replace("<","").replace(">","").trim()
+				relation+="<a target=\"_blank\" href=\""+reformatted+"\">"+reformatted.substring(findLastNonAlpha(reformatted))+"</a>"
+			}else{
+				relation+=splitted2[2]
+			}
+			relation+="&nbsp;&nbsp;&nbsp;<button onclick=\"removeEntry("+i+")\">Remove</button></li>"
+			//alert(relation)
+			$('#relations').append(relation)
 		  }
 	  }
 	}
