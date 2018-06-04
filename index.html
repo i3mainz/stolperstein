@@ -9,6 +9,7 @@ var globalcounter=0
 var residencecounter=0
 var personcounter=0
 collectRDF[globalcounter++]="<http://stolpersteine.i3mainz.de> rdf:type owl:Ontology . \n";
+var personnames={}
   $( function() {
 	  document.getElementById('file-input')
 	  .addEventListener('change', readSingleFile, false);
@@ -178,18 +179,34 @@ function saveTextAsFile()
 
     downloadLink.click();
 }
+
+function getOptionString(){
+    result=""
+    for(key in personnames){
+            result+="<option value=\""+personnames[key]+"\">"+key+"</option>"
+    }
+    return result;
+}
+
+function selectperson(){
+        $('#subject').val($( "#personnames option:selected" ).val())
+}
+
 function addTriple(){
 	if($('#subject').val()!="" && $('#predicate').val()!="" && $('#object').val()!=""){
 		tripleline=""
 	    if($('#subject').val().includes("http"))
 			tripleline+="<"+$('#subject').val()+"> "
-		else
-			tripleline+="<http://stolpersteine.i3mainz.de/person#"+$('#subject').val()+"> "
+		else{
+			tripleline+="<http://stolpersteine.i3mainz.de/person#"+$('#subject').val().trim().replace(" ","_")+"> "
+			personnames[$('#subject').val().trim()]="http://stolpersteine.i3mainz.de/person#"+$('#subject').val().trim().replace(" ","_")
+                        $('#personnames').html(getOptionString())    
+                }
 		tripleline+="<"+$('#predicate').val()+"> "
 		if($('#object').val().includes("http"))
 			tripleline+="<"+$('#object').val()+"> "
 		else
-			tripleline+="<http://stolpersteine.i3mainz.de/person#"+$('#object').val()+"> "
+			tripleline+="<http://stolpersteine.i3mainz.de/person#"+$('#object').val().trim().replace(" ","_")+"> "
 		tripleline+=" . \n"
 		collectRDF[globalcounter]=tripleline;
 		toadd="<li id=\"li-"+globalcounter+"\">"
@@ -308,6 +325,10 @@ function displayContents(contents) {
 			if(splitted2[0].includes("<") && splitted2[0].includes(">")){
 				reformatted=splitted2[0].replace("<","").replace(">","").trim()
 				relation+="<a target=\"_blank\" href=\""+reformatted+"\">"+reformatted.substring(findLastNonAlpha(reformatted))+"</a>"
+                                if(reformatted.startsWith("http://stolpersteine.i3mainz.de")){
+                                            personnames[reformatted.substring('#')]=reformatted
+                                            $('#personnames').html(getOptionString())    
+                                }
 			}else{
 				relation+=splitted2[0]
 			}		
@@ -385,7 +406,7 @@ function addAddressData(subject){
 <tr><td>Date of birth: </td><td><input type="date" id="dateofbirth" name="dateofbirth"/></td><td>From: </td><td><input type="date" id="from" name="from"/> </td><td>To: <input type="date" id="to"/></td></tr>
 <tr><td> Date of death: </td><td><input type="date" id="dateofdeath" name="dateofdeath"/></td></tr>
 <tr><td colspan="2"><button id="basicinfo" onclick="addBasicInformation()">Add basic information</button></td><td colspan="2"><button id="addaddress" onclick="addAddressData()">Add residence address</button></td><td><input type="hidden" id="Q5" value="person" text="person"/></td></tr></table><br/>
-Person URI: <input type="text" disabled="disabled" id="personuri"/>
+Person URI: <select id="personnames"></select><button id="chooseperson" onclick="selectperson()">Select</button>
 <h3>Relation Input</h3>
 Person: <input type="text" id="subject"/>
 Relation:<select id="predicate">
