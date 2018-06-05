@@ -217,12 +217,15 @@ function addTriple(){
                 }
 		tripleline+="<"+$('#predicate').val()+"> "
 		if($('#object').val().includes("http"))
-			tripleline+="<"+$('#object').val()+"> "
+			tripleline+="<"+$('#object').val()+"> ."
                 else if($('#object').val().includes("^^")){
-                            tripleline+="\""+$('#object').val().substring(0,$('#object').val().indexOf('^^'))+"\""+$('#object').val().substring($('#object').val().indexOf('^^'));
+                            tripleline+="\""+$('#object').val().substring(0,$('#object').val().indexOf('^^'))+"\""+$('#object').val().substring($('#object').val().indexOf('^^'))+" . ";
+		}else if($('#objuri').val()!=""){
+                            tripleline+="<"+$('#objuri').val()+"> . \n"
+                            tripleline+="<"+$('#objuri').val()+"> rdfs:label \""+$('#object').val()+"\"@en ."
 		}else
-			tripleline+="<http://stolpersteine.i3mainz.de/person#"+$('#object').val().trim().replace(" ","_")+"> "
-		tripleline+=" . \n"
+			tripleline+="<http://stolpersteine.i3mainz.de/person#"+$('#object').val().trim().replace(" ","_")+"> ."
+		tripleline+=" \n"
 		collectRDF[globalcounter]=tripleline;
 		toadd="<li id=\"li-"+globalcounter+"\">"
 		if($('#subject').val().includes("http")){
@@ -238,6 +241,9 @@ function addTriple(){
 		}else if($('#object').val().includes("^^")){
                             toadd2+="<a href=\"http://www.w3.org/2001/XMLSchema#date\" target=\"_blank\">"
                             toadd2+=$('#object').val().trim()+"</a>";
+		}else if($('#objuri').val()!=""){
+			toadd2+="<a href=\""+$('#objuri').val()+"\" target=\"_blank\">"
+			toadd2+=$('#object').val()+"</a>";
 		}else{
 			toadd2+="<a href=\"http://stolpersteine.i3mainz.de#"+$('#object').val().trim().replace(" ","_")+"\" target=\"_blank\">"
 			toadd2+=$('#object').val().trim().replace(" ","_")+"</a>";
@@ -249,6 +255,7 @@ function addTriple(){
 		globalcounter++;
 		$('#subject').val("")
 		$('#object').val("")
+		$('#objuri').val("")
 	}
 	
 }
@@ -325,21 +332,20 @@ function displayContents(contents) {
 	  splitted=contents.replace("<","").replace(">","").split("\n")
 	  first=true
 	  collectRDF={}
-	  i=0;
+	  j=0;
 	  for(elem in splitted){
 		  if(first){
-			  collectRDF[i++]="<http://stolpersteine.i3mainz.de> rdf:type owl:Ontology . \n";
+			  collectRDF[j]="<http://stolpersteine.i3mainz.de> rdf:type owl:Ontology . \n";
 			  first=false;
+			  j+=1
 			  continue;
 		  }
 		  //alert(splitted[el)
-		  if(splitted[elem]!=""){
-			collectRDF[i]=splitted[elem]+" \n";
+		  if(splitted[elem]!="" && !splitted[elem].includes("rdfs:label")){
+			collectRDF[j]=splitted[elem]+" \n";
+			//alert("Add "+j+" "+splitted[elem])
 			splitted2=splitted[elem].split(" ") //.replace("<"," - ").replace(">"," - ")
-			//alert(splitted2)
-			//alert(splitted2[1])
-			//alert(i)
-			relation="<li id=\"li-"+i+++"\">";
+			relation="<li id=\"li-"+j+"\">";
 			if(splitted2[0].includes("<") && splitted2[0].includes(">")){
 				reformatted=splitted2[0].replace("<","").replace(">","").trim()
 				relation+="<a target=\"_blank\" href=\""+reformatted+"\">"+reformatted.substring(findLastNonAlpha(reformatted))+"</a>"
@@ -353,18 +359,24 @@ function displayContents(contents) {
 			reformatted=splitted2[1].replace("<","").replace(">","").trim();			
 		  	relation+=" - <a target=\"_blank\" href=\""+splitted2[1].replace("<","").replace(">","").trim()+"\">"+$("#"+reformatted.substring(findLastNonAlpha(reformatted))).text()+"</a> - "
 			//alert("#"+reformatted.substring(findLastNonAlpha(reformatted))).text())
-
 			if(splitted2[2].includes("<") && splitted2[2].includes(">")){
 				reformatted=splitted2[2].replace("<","").replace(">","").trim()
-				relation+="<a target=\"_blank\" href=\""+reformatted+"\">"+reformatted.substring(findLastNonAlpha(reformatted))+"</a>"
+				label=""
+				nextindex=parseInt(elem)+1
+                                if(nextindex<splitted.length && splitted[nextindex].includes("rdfs:label")){
+                                        label=splitted[nextindex].substring(splitted[nextindex].indexOf("\"")+1,splitted[nextindex].lastIndexOf("\"")).trim()
+                                        collectRDF[j+1]=splitted[nextindex]+"\n"
+                                }
+				relation+="<a target=\"_blank\" href=\""+reformatted+"\">"+(label==""?reformatted.substring(findLastNonAlpha(reformatted)):label)+"</a>"
 			}else{
 				relation+=splitted2[2]
 			}
-			relation+="&nbsp;&nbsp;&nbsp;<button onclick=\"removeEntry("+i+")\">Remove</button></li>"
-			//alert(relation)
+			relation+="&nbsp;&nbsp;&nbsp;<button onclick=\"removeEntry("+j+")\">Remove</button></li>"
 			$('#relations').append(relation)
 		  }
+		  j+=1
 	  }
+	  alert(JSON.stringify(collectRDF))
 	}
 function searchObjects(){
 	var availableTags = []
@@ -381,8 +393,11 @@ $.get( "https://cors.io/?https://www.wikidata.org/w/api.php?action=wbsearchentit
 	        source: availableTags,
 	        select: function(event, ui) {
 	            if(ui.item){
-	          		$('#more2').attr("href",ui.item.value)	                
-		            $('#object').val(ui.item);
+                                $('#object').val("");
+                                $('#object').val(ui.item.label);
+	          		$('#more2').attr("href",ui.item.value)	
+	          		$('#objuri').val(ui.item.value)	  
+                                event.preventDefault()
 	            }
 
 	        }
@@ -423,8 +438,7 @@ function addAddressData(subject){
 <tr><td>Geocoordinate of stone:</td><td> <input type="text" id="geocoordinate" name="geocoordinate"/></td><td>Country:</td><td><input type="text" id="housenumber" name="housenumber"/></td><td>Geocoordinate: <input type="text" id="addrcoord" name="addrcoord"/></td></tr>
 <tr><td>Date of birth: </td><td><input type="date" id="dateofbirth" name="dateofbirth"/></td><td>From: </td><td><input type="date" id="from" name="from"/> </td><td>To: <input type="date" id="to"/></td></tr>
 <tr><td> Date of death: </td><td><input type="date" id="dateofdeath" name="dateofdeath"/></td></tr>
-<tr><td colspan="2"><button id="basicinfo" onclick="addBasicInformation()">Add basic information</button></td><td colspan="2"><button id="addaddress" onclick="addAddressData()">Add residence address</button></td><td><input type="hidden" id="Q5" value="person" text="person"/></td></tr></table><br/>
-Person URI: <select id="personnames"></select><button id="chooseperson" onclick="selectperson()">Select</button>
+<tr><td colspan="2"><button id="basicinfo" onclick="addBasicInformation()">Add basic information</button></td><td colspan="2"><button id="addaddress" onclick="addAddressData()">Add residence address</button></td><td colspan=2><input type="hidden" id="Q5" value="person" text="person"/>Person URI: <select id="personnames"></select><button id="chooseperson" onclick="selectperson()">Select</button></td></tr></table><br/>
 <h3>Relation Input</h3>
 Person: <input type="text" id="subject"/>
 Relation:<select id="predicate">
@@ -500,34 +514,14 @@ Relation:<select id="predicate">
 <option id="P412" value="http://www.wikidata.org/wiki/Property:P412">voice type</option>
 <option id="P553" value="http://www.wikidata.org/wiki/Property:P553">website account on</option>
 
-<!--
-student	P802	Item	student: notable student(s) of an individual	Albert Einstein <student> Ernst G. Straus	student of
-canonization status	P411	Item	canonization status: stage in the process of attaining sainthood per the subject's religious organization	John Paul II <canonization status> beatification	-
-shooting handedness	P423	Item	whether the hockey player passes or shoots left- or right-handed	Joe Thornton <shooting handedness> left-handed shot	-
-dan/kyu rank	P468	Item	dan and Kyū: rank system used in several board games (e.g. go, shogi, renju), martial arts (e.g. judo, kendo, wushu) and some other games	Go Seigen <dan/kyu rank> 9 dan	-
-Eight Banner register	P470	Item	Manchu household register for people of the Qing Dynasty	Oboi <Eight Banner register> Manchu Bordered Yellow Banner	-
-family	P53	Item	family: family, including dynasty and nobility houses. Not family name (use P734 for family name).	Genghis Khan <family> Borjigin	-
-honorific prefix	P511	Item	honorific and title of honor: word or expression used before a name, in addressing or referring to a person	Douglas Haig, 1st Earl Haig <honorific prefix> The Right Honourable	-
-handedness	P552	Item	chirality: handedness of the person	Novak Djokovic <handedness> right-handedness	-
-website account on	P553	Item	user account: a website that the person or organization has an account on (use with P554) Note: only used with reliable source or if the person or organization disclosed it.	Sascha Lobo <website account on> XING	-
-honorific suffix	P1035	Item	honorific: word or expression with connotations conveying esteem or respect when used, after a name, in addressing or referring to a person	Peter Taylor <honorific suffix> Officer of the Order of the British Empire	-
-feast day	P841	Item	saint's principal feast day	Saint Patrick <feast day> March 17	-
-audio recording of the subject's spoken voice	P990	Commons media file	audio file representing the speaking voice of a person; or of an animated cartoon or other fictitious character	Mary Robinson <audio recording of the subject's spoken voice> Mary Robinson - Desert Island Discs - 28 July 2013.flac	-
-manager/director	P1037	Item	person who manages any kind of group	Louvre Museum <manager/director> Jean-Luc Martinez	-
-filmography	P1283	Item	filmography: item with a list of films a person has contributed to. Don't use to add film items. Instead, add actors as cast on items for films the participated in.	Bruce Lee <filmography> Bruce Lee filmography	-
-languages spoken, written or signed	P1412	Item	language proficiency: language(s) that a person speaks or writes, including the native language(s)	Margrethe II of Denmark <languages spoken, written or signed> Danish, English, French, Swedish, German and Faroese	-
-Commons Creator page	P1472	String	Commons Creator page: name of Commons Infobox template residing in "Creator" namespace on Wikimedia Commons	Augustus Henry Fox <Commons Creator page> Henry Fox Augustus Henry Fox	-
-Project Gutenberg author ID	P1938	External identifier	Project Gutenberg: author identifier at Project Gutenberg	David Christie Murray <Project Gutenberg author ID> 25179	-
-
--->
 </select><a href="#" id="more" target="_blank">???</a>
   <label for="tags">To: </label>
-  <input id="object" onkeyup="searchObjects()"><input type="hidden" id="dateres"/><a href="#" id="more2" target="_blank">???</a>
+  <input id="object" onkeyup="searchObjects()"><input type="hidden" id="objuri"/><input type="hidden" id="dateres"/><a href="#" id="more2" target="_blank">???</a>
   <button id="addtriple" onclick="addTriple()">Add relation</button>
 </div>
 <br/>
 <h3>Extracted relations from text:</h3>
-<ul id="relations">
+<ul id="relations" style="width: 90%; overflow: auto">
 </ul>
 <!--<textarea rows="25" cols="100" id="textArea"></textarea><br/>-->
 <button id="save" onclick="saveTextAsFile()">Export result to file</button>
