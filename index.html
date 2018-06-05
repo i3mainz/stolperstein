@@ -11,6 +11,19 @@ var personcounter=0
 collectRDF[globalcounter++]="<http://stolpersteine.i3mainz.de> rdf:type owl:Ontology . \n";
 var personnames={}
   $( function() {
+  $("#dateres").datepicker({
+        onSelect: function(date) {
+            $('#object').val(date+"^^xsd:date")
+        },
+      showOn: "button",
+      dateFormat: 'yy-mm-dd',
+      buttonImage: "https://jqueryui.com/resources/demos/datepicker/images/calendar.gif",
+      buttonImageOnly: true,
+      buttonText: "Select date"
+   });
+   $('#datebutton').click(function() {
+        $('#dateres').datepicker('show');
+    });
 	  document.getElementById('file-input')
 	  .addEventListener('change', readSingleFile, false);
     $.widget( "custom.combobox", {
@@ -205,7 +218,9 @@ function addTriple(){
 		tripleline+="<"+$('#predicate').val()+"> "
 		if($('#object').val().includes("http"))
 			tripleline+="<"+$('#object').val()+"> "
-		else
+                else if($('#object').val().includes("^^")){
+                            tripleline+="\""+$('#object').val().substring(0,$('#object').val().indexOf('^^'))+"\""+$('#object').val().substring($('#object').val().indexOf('^^'));
+		}else
 			tripleline+="<http://stolpersteine.i3mainz.de/person#"+$('#object').val().trim().replace(" ","_")+"> "
 		tripleline+=" . \n"
 		collectRDF[globalcounter]=tripleline;
@@ -220,6 +235,9 @@ function addTriple(){
 		if($('#object').val().includes("http")){
 			toadd2+="<a href=\""+$('#object').val()+"\" target=\"_blank\">"+
 			($('#object').val().includes("#")?$("#object").val().substring($("#object").val().indexOf('#')+1):$("#object").val())+"</a>"
+		}else if($('#object').val().includes("^^")){
+                            toadd2+="<a href=\"http://www.w3.org/2001/XMLSchema#date\" target=\"_blank\">"
+                            toadd2+=$('#object').val().trim()+"</a>";
 		}else{
 			toadd2+="<a href=\"http://stolpersteine.i3mainz.de#"+$('#object').val().trim().replace(" ","_")+"\" target=\"_blank\">"
 			toadd2+=$('#object').val().trim().replace(" ","_")+"</a>";
@@ -415,7 +433,7 @@ Relation:<select id="predicate">
 <option id="P69" value="http://www.wikidata.org/wiki/Property:P69">alma mater</option>
 <option id="P66" value="http://www.wikidata.org/wiki/Property:P66">ancestral home</option>
 <option id="P450" value="http://www.wikidata.org/wiki/Property:P450">astronaut mission</option>
-<option id="P166" value="http://www.wikidata.org/wiki/Property:P166">award</option>
+<option id="P166" value="http://www.wikidata.org/wiki/Property:P166">award received</option>
 <option id="P1350" value="http://www.wikidata.org/wiki/Property:P3150">birthday</option>
 <option id="P1477" value="http://www.wikidata.org/wiki/Property:P1477">birth name</option>
 <option id="P509" value="http://www.wikidata.org/wiki/Property:P509">cause of death</option>
@@ -431,6 +449,7 @@ Relation:<select id="predicate">
 <option id="P551" value="http://www.wikidata.org/wiki/Property:P551">dwelling</option>
 <option id="P69" value="http://www.wikidata.org/wiki/Property:P69">educated at</option>
 <option id="P108" value="http://www.wikidata.org/wiki/Property:P108">employer</option>
+<option id="P582" value="http://www.wikidata.org/wiki/Property:P582">end time</option>
 <option id="P172" value="http://www.wikidata.org/wiki/Property:P172">ethnic group</option>
 <option id="P1340" value="http://www.wikidata.org/wiki/Property:P1340">eye color</option>
 <option id="P734" value="http://www.wikidata.org/wiki/Property:P734">family name</option>
@@ -472,7 +491,9 @@ Relation:<select id="predicate">
 <option id="P21" value="http://www.wikidata.org/wiki/Property:P21">sex or gender</option>
 <option id="P3373" value="http://www.wikidata.org/wiki/Property:P3373">sibling</option>
 <option id="P26" value="http://www.wikidata.org/wiki/Property:P26">spouse</option>
+<option id="P580" value="http://www.wikidata.org/wiki/Property:P580">start time</option>
 <option id="P3448" value="http://www.wikidata.org/wiki/Property:P3448">stepparent</option>
+<option id="P1066" value="http://www.wikidata.org/wiki/Property:P1066">student of</option>
 <option id="P1066" value="http://www.wikidata.org/wiki/Property:P1066">teacher</option>
 <option id="P793" value="http://www.wikidata.org/wiki/Property:P793">witnessed significant event</option>
 <option id="P800" value="http://www.wikidata.org/wiki/Property:P800">work and magnum opus</option>
@@ -501,7 +522,7 @@ Project Gutenberg author ID	P1938	External identifier	Project Gutenberg: author 
 -->
 </select><a href="#" id="more" target="_blank">???</a>
   <label for="tags">To: </label>
-  <input id="object" onkeyup="searchObjects()"><a href="#" id="more2" target="_blank">???</a>
+  <input id="object" onkeyup="searchObjects()"><input type="hidden" id="dateres"/><a href="#" id="more2" target="_blank">???</a>
   <button id="addtriple" onclick="addTriple()">Add relation</button>
 </div>
 <br/>
