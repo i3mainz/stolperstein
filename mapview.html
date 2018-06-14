@@ -1,0 +1,475 @@
+<html>
+<head><title>Stolpersteine Input Page</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+<script>
+var collectRDF={}
+var globalcounter=0
+var residencecounter=0
+var personcounter=0
+collectRDF[globalcounter++]="<http://stolpersteine.i3mainz.de> rdf:type owl:Ontology . \n";
+var personnames={}
+  $( function() {
+  $("#dateres").datepicker({
+        onSelect: function(date) {
+            $('#object').val(date+"^^xsd:date")
+        },
+      showOn: "button",
+      dateFormat: 'yy-mm-dd',
+      buttonImage: "https://jqueryui.com/resources/demos/datepicker/images/calendar.gif",
+      buttonImageOnly: true,
+      buttonText: "Select date"
+   });
+   $('#datebutton').click(function() {
+        $('#dateres').datepicker('show');
+    });
+	  document.getElementById('file-input')
+	  .addEventListener('change', readSingleFile, false);
+    $.widget( "custom.combobox", {
+      _create: function() {
+        this.wrapper = $( "<span>" )
+          .addClass( "custom-combobox" )
+          .insertAfter( this.element );
+ 
+        this.element.hide();
+        this._createAutocomplete();
+        this._createShowAllButton();
+      },
+ 
+      _createAutocomplete: function() {
+        var selected = this.element.children( ":selected" ),
+          value = selected.val() ? selected.text() : "";
+ 
+        this.input = $( "<input>" )
+          .appendTo( this.wrapper )
+          .val( value )
+          .attr( "title", "" )
+          .addClass( "custom-combobox-input ui-widget ui-widget-content ui-state-default ui-corner-left" )
+          .autocomplete({
+            delay: 0,
+            minLength: 0,
+            source: $.proxy( this, "_source" )
+          })
+          .tooltip({
+            classes: {
+              "ui-tooltip": "ui-state-highlight"
+            }
+          });
+ 
+        this._on( this.input, {
+          autocompleteselect: function( event, ui ) {
+            ui.item.option.selected = true;
+            this._trigger( "select", event, {
+              item: ui.item.option
+            });
+      		$('#more').attr("href",$("option:selected",$('#predicate')).val())
+          },
+ 
+          autocompletechange: "_removeIfInvalid"
+        });
+      },
+ 
+      _createShowAllButton: function() {
+        var input = this.input,
+          wasOpen = false;
+ 
+        $( "<a>" )
+          .attr( "tabIndex", -1 )
+          .attr( "title", "Show All Items" )
+          .tooltip()
+          .appendTo( this.wrapper )
+          .button({
+            icons: {
+              primary: "ui-icon-triangle-1-s"
+            },
+            text: false
+          })
+          .removeClass( "ui-corner-all" )
+          .addClass( "custom-combobox-toggle ui-corner-right" )
+          .on( "mousedown", function() {
+            wasOpen = input.autocomplete( "widget" ).is( ":visible" );
+          })
+          .on( "click", function() {
+            input.trigger( "focus" );
+
+            // Close if already visible
+            if ( wasOpen ) {
+              return;
+            }
+ 
+            // Pass empty string as value to search for, displaying all results
+            input.autocomplete( "search", "" );
+          });
+      },
+ 
+      _source: function( request, response ) {
+        var matcher = new RegExp( $.ui.autocomplete.escapeRegex(request.term), "i" );
+        response( this.element.children( "option" ).map(function() {
+          var text = $( this ).text();
+          if ( this.value && ( !request.term || matcher.test(text) ) )
+            return {
+              label: text,
+              value: text,
+              option: this
+            };
+        }) );
+      },
+ 
+      _removeIfInvalid: function( event, ui ) {
+ 
+        // Selected an item, nothing to do
+        if ( ui.item ) {
+          return;
+        }
+ 
+        // Search for a match (case-insensitive)
+        var value = this.input.val(),
+          valueLowerCase = value.toLowerCase(),
+          valid = false;
+        this.element.children( "option" ).each(function() {
+          if ( $( this ).text().toLowerCase() === valueLowerCase ) {
+            this.selected = valid = true;
+            return false;
+          }
+        });
+ 
+        // Found a match, nothing to do
+        if ( valid ) {
+          return;
+        }
+ 
+        // Remove invalid value
+        this.input
+          .val( "" )
+          .attr( "title", value + " didn't match any item" )
+          .tooltip( "open" );
+        this.element.val( "" );
+        this._delay(function() {
+          this.input.tooltip( "close" ).attr( "title", "" );
+        }, 2500 );
+        this.input.autocomplete( "instance" ).term = "";
+      },
+ 
+      _destroy: function() {
+        this.wrapper.remove();
+        this.element.show();
+      }
+    });
+ 
+    $( "#predicate" ).combobox();
+    $( "#toggle" ).on( "click", function() {
+      $( "#predicate" ).toggle();
+    });
+  } );
+function saveTextAsFile()
+{
+	var collect=""
+	for(item in collectRDF){
+		collect+=collectRDF[item]
+	}
+    var textFileAsBlob = new Blob([collect], {type:'text/plain'});
+    var fileNameToSaveAs = "res.ttl";
+
+    var downloadLink = document.createElement("a");
+    downloadLink.download = fileNameToSaveAs;
+    downloadLink.innerHTML = "Download File";
+    if (window.webkitURL != null)
+    {
+        // Chrome allows the link to be clicked
+        // without actually adding it to the DOM.
+        downloadLink.href = window.webkitURL.createObjectURL(textFileAsBlob);
+    }
+    else
+    {
+        // Firefox requires the link to be added to the DOM
+        // before it can be clicked.
+        downloadLink.href = window.URL.createObjectURL(textFileAsBlob);
+        downloadLink.onclick = destroyClickedElement;
+        downloadLink.style.display = "none";
+        document.body.appendChild(downloadLink);
+    }
+
+    downloadLink.click();
+}
+
+function getOptionString(){
+    result=""
+    for(key in personnames){
+            result+="<option value=\""+personnames[key]+"\">"+key+"</option>"
+    }
+    return result;
+}
+
+function selectperson(){
+        $('#subject').val($( "#personnames option:selected" ).val())
+}
+
+function addTriple(){
+	if($('#subject').val()!="" && $('#predicate').val()!="" && $('#object').val()!=""){
+		tripleline=""
+	    if($('#subject').val().includes("http"))
+			tripleline+="<"+$('#subject').val()+"> "
+		else{
+			tripleline+="<http://stolpersteine.i3mainz.de/person#"+$('#subject').val().trim().replace(" ","_")+"> "
+			personnames[$('#subject').val().trim()]="http://stolpersteine.i3mainz.de/person#"+$('#subject').val().trim().replace(" ","_")
+                        $('#personnames').html(getOptionString())    
+                }
+		tripleline+="<"+$('#predicate').val()+"> "
+		if($('#object').val().includes("http"))
+			tripleline+="<"+$('#object').val()+"> ."
+                else if($('#object').val().includes("^^")){
+                            tripleline+="\""+$('#object').val().substring(0,$('#object').val().indexOf('^^'))+"\""+$('#object').val().substring($('#object').val().indexOf('^^'))+" . ";
+		}else if($('#objuri').val()!=""){
+                            tripleline+="<"+$('#objuri').val()+"> . \n"
+                            tripleline+="<"+$('#objuri').val()+"> rdfs:label \""+$('#object').val()+"\"@en ."
+		}else
+			tripleline+="<http://stolpersteine.i3mainz.de/person#"+$('#object').val().trim().replace(" ","_")+"> ."
+		tripleline+=" \n"
+		collectRDF[globalcounter]=tripleline;
+		toadd="<li id=\"li-"+globalcounter+"\">"
+		if($('#subject').val().includes("http")){
+			toadd+="<a href=\""+$('#subject').val()+"\" target=\"_blank\">"+
+			($('#subject').val().includes("#")?$("#subject").val().substring($("#subject").val().indexOf('#')+1):$("#subject").val())+"</a>"
+		}else{
+			toadd+=$('#subject').val().trim().replace(" ","_");
+		}
+		toadd2=""
+		if($('#object').val().includes("http")){
+			toadd2+="<a href=\""+$('#object').val()+"\" target=\"_blank\">"+
+			($('#object').val().includes("#")?$("#object").val().substring($("#object").val().indexOf('#')+1):$("#object").val())+"</a>"
+		}else if($('#object').val().includes("^^")){
+                            toadd2+="<a href=\"http://www.w3.org/2001/XMLSchema#date\" target=\"_blank\">"
+                            toadd2+=$('#object').val().trim()+"</a>";
+		}else if($('#objuri').val()!=""){
+			toadd2+="<a href=\""+$('#objuri').val()+"\" target=\"_blank\">"
+			toadd2+=$('#object').val()+"</a>";
+		}else{
+			toadd2+="<a href=\"http://stolpersteine.i3mainz.de#"+$('#object').val().trim().replace(" ","_")+"\" target=\"_blank\">"
+			toadd2+=$('#object').val().trim().replace(" ","_")+"</a>";
+		}
+		$('#relations').append(toadd+" - <a href=\""+$("option:selected",$('#predicate')).val()+
+				"\" target=\"_blank\">"+$("option:selected",$('#predicate')).text()+
+				"</a> - "+toadd2+"&nbsp;&nbsp;&nbsp;<button onclick=\"removeEntry("+globalcounter+")\">Remove</button></li>")
+				//<a href=\""+$('#object').val()+"\" target=\"_blank\">"+$('#object').val()+"</a>"
+		globalcounter++;
+		$('#subject').val("")
+		$('#object').val("")
+		$('#objuri').val("")
+	}
+	
+}
+
+function findLastNonAlpha(input){
+	if(input.includes("^^")){
+		return input.length
+	}
+	for(i=input.length-2;i>0;i--){
+		if(!input.substring(i,i+1).match("[A-z0-9-,;.^]"))
+			return i+1;
+	}
+}
+
+function addTriple2(subject,predicate,object){
+	if(subject!="" && predicate!="" && object!=""){
+		tripleline=""
+	    if(subject.includes("http"))
+			tripleline+="<"+subject+"> "
+		else
+			tripleline+="<http://stolpersteine.i3mainz.de/person#"+subject+"> "
+		tripleline+="<"+predicate+"> "
+		if(object.includes("http"))
+			tripleline+="<"+object+"> "
+		else
+			tripleline+="<http://stolpersteine.i3mainz.de/person#"+object+"> "
+		tripleline+=" . \n"
+		collectRDF[globalcounter]=tripleline;
+		subatt=subject.substring(findLastNonAlpha(subject))
+		predatt=predicate.substring(findLastNonAlpha(predicate))
+		addit="<li id=\"li-"+globalcounter+"\"><a href=\""+subject+"\" target=\"_blank\">"+($('#'+subatt).length!=0?($('#'+subatt).text()):subatt)+"</a> - <a href=\""+predicate+"\" target=\"_blank\">"+($('#'+predatt).length!=0?($('#'+predatt).text()):predatt)+"</a> - "
+		objatt=""
+		if(!object.includes("^^") && object!=""){
+			objatt=object.substring(findLastNonAlpha(object))
+			addit+="<a href=\""+object+"\" target=\"_blank\">";
+			addit+=($('#'+objatt).length!=0 && $('#'+objatt).length!=1 ?($('#'+objatt).text()):objatt);
+		}else{
+			objatt=object
+			addit+="<a href=\""+objatt.substring(objatt.indexOf("^^")+2)+"\" target=\"_blank\">";
+			addit+=objatt.substring(0,objatt.indexOf("^^"))
+			
+		}
+		//alert(subatt+" - "+predatt+" - "+objatt)		
+		addit+="</a>&nbsp;&nbsp;&nbsp;<button onclick=\"removeEntry("+globalcounter+")\">Remove</button></li>"
+		$('#relations').append(addit)
+		globalcounter++;
+		//collectRDF+="wd:"+$('#subject').val()+" <"+$('#predicate').val()+"> wd:"+$('#object').val()+" . \n";
+		$('#subject').val("")
+		$('#object').val("")
+	}
+	
+}
+
+function removeEntry(i){
+	delete collectRDF[i]
+	$('#li-'+i).remove()
+}
+function readSingleFile(e) {
+	  var file = e.target.files[0];
+	  if (!file) {
+	    return;
+	  }
+	  var reader = new FileReader();
+	  reader.onload = function(e) {
+	    var contents = e.target.result;
+	    displayContents(contents);
+	  };
+	  reader.readAsText(file);
+	}
+function displayContents(contents) {
+	  var element = document.getElementById('relations');
+	  element.textContent = contents;
+	  $('#relations').html("")
+	  splitted=contents.replace("<","").replace(">","").split("\n")
+	  first=true
+	  collectRDF={}
+	  j=0;
+	  for(elem in splitted){
+		  if(first){
+			  collectRDF[j]="<http://stolpersteine.i3mainz.de> rdf:type owl:Ontology . \n";
+			  first=false;
+			  j+=1
+			  continue;
+		  }
+		  //alert(splitted[el)
+		  if(!splitted[elem].includes("asWKT")){
+			    geometry=splitted[elem].split(" ")[2]
+				goemetry=geometry.substring(geometry.indexOf('(')+1,geometry.indexOf(')'))
+				coords=geometry.split(" ")
+		  		  var popup = L.popup()
+					.setLatLng([coords[0], coords[1]])
+					.setContent("I am a standalone popup.")
+					.openOn(mymap);
+		  }
+
+		  if(splitted[elem]!="" && !splitted[elem].includes("rdfs:label")){
+			collectRDF[j]=splitted[elem]+" \n";
+			//alert("Add "+j+" "+splitted[elem])
+			splitted2=splitted[elem].split(" ") //.replace("<"," - ").replace(">"," - ")
+			relation="<li id=\"li-"+j+"\">";
+			if(splitted2[0].includes("<") && splitted2[0].includes(">")){
+				reformatted=splitted2[0].replace("<","").replace(">","").trim()
+				relation+="<a target=\"_blank\" href=\""+reformatted+"\">"+reformatted.substring(findLastNonAlpha(reformatted))+"</a>"
+                                if(reformatted.startsWith("http://stolpersteine.i3mainz.de")){
+                                            personnames[reformatted.substring('#')]=reformatted
+                                            $('#personnames').html(getOptionString())    
+                                }
+			}else{
+				relation+=splitted2[0]
+			}		
+			reformatted=splitted2[1].replace("<","").replace(">","").trim();			
+		  	relation+=" - <a target=\"_blank\" href=\""+splitted2[1].replace("<","").replace(">","").trim()+"\">"+$("#"+reformatted.substring(findLastNonAlpha(reformatted))).text()+"</a> - "
+			//alert("#"+reformatted.substring(findLastNonAlpha(reformatted))).text())
+			if(splitted2[2].includes("<") && splitted2[2].includes(">")){
+				reformatted=splitted2[2].replace("<","").replace(">","").trim()
+				label=""
+				nextindex=parseInt(elem)+1
+                                if(nextindex<splitted.length && splitted[nextindex].includes("rdfs:label")){
+                                        label=splitted[nextindex].substring(splitted[nextindex].indexOf("\"")+1,splitted[nextindex].lastIndexOf("\"")).trim()
+                                        collectRDF[j+1]=splitted[nextindex]+"\n"
+                                }
+				relation+="<a target=\"_blank\" href=\""+reformatted+"\">"+(label==""?reformatted.substring(findLastNonAlpha(reformatted)):label)+"</a>"
+			}else{
+				relation+=splitted2[2]
+			}
+			relation+="&nbsp;&nbsp;&nbsp;<button onclick=\"removeEntry("+j+")\">Remove</button></li>"
+			$('#relations').append(relation)
+		  }
+		  j+=1
+	  }
+	}
+function searchObjects(){
+	var availableTags = []
+$.get( "https://cors.io/?https://www.wikidata.org/w/api.php?action=wbsearchentities&language=en&search="+$('#object').
+		val()+"&type=item&limit=7&format=json", function( data ) {
+	  jsonobj=JSON.parse(data);
+	  collect=""
+	  for(obj in jsonobj["search"]){
+		  availableTags.push({"label":jsonobj["search"][obj]["label"]+" ("+jsonobj["search"][obj]["description"]+") "
+			  ,"value":"http:"+jsonobj["search"][obj]["url"]})
+		  collect+=jsonobj["search"][obj]["label"]+" ("+jsonobj["search"][obj]["description"]+") "+jsonobj["search"][obj]["url"]+"\n";
+	  }
+	    $( "#object" ).autocomplete({
+	        source: availableTags,
+	        select: function(event, ui) {
+	            if(ui.item){
+                                $('#object').val("");
+                                $('#object').val(ui.item.label);
+	          		$('#more2').attr("href",ui.item.value)	
+	          		$('#objuri').val(ui.item.value)	  
+                                event.preventDefault()
+	            }
+
+	        }
+	      });
+
+	});
+}
+function addBasicInformation(){
+	resname="http://i3mainz.de/stolpersteine/person#"+$('#familyname').val()+"_"+$('#firstname').val()+"_"+personcounter++
+	addTriple2(resname,"a", "http://www.wikidata.org/wiki/Q5")
+	addTriple2(resname,"http://www.wikidata.org/wiki/Property:P735",$('#firstname').val())
+	addTriple2(resname,"http://www.wikidata.org/wiki/Property:P734",$('#familyname').val())
+	addTriple2(resname,"http://www.wikidata.org/wiki/Property:P569",$('#dateofbirth').val()+"^^http://www.w3.org/2001/XMLSchema\#date")
+	addTriple2(resname,"http://www.wikidata.org/wiki/Property:P570",$('#dateofdeath').val()+"^^http://www.w3.org/2001/XMLSchema\#date")		
+	addTriple2(resname,"http://www.opengis.net/ont/geosparql#hasGeometry",resname+"_geom")
+	addTriple2(resname+"_geom","http://www.opengis.net/ont/geosparql#asWKT",$('#geocoordinate').val()+"^^http://www.opengis.net/ont/geosparql\#WKTLiteral")
+	$('#subject').text(resname);
+	$('#subject').val(resname);
+	$('#personuri').val(resname);
+}
+function addAddressData(subject){
+	resname="http://i3mainz.de/stolpersteine#"+subject+"_res_"+residencecounter++
+	addTriple2("http://i3mainz.de/stolpersteine#"+subject,"https://www.wikidata.org/wiki/Property:P551", resname)
+	addTriple2(resname,"a","https://www.wikidata.org/wiki/Q319608")
+	addTriple2(resname,"https://www.wikidata.org/wiki/Property:P527","https://www.wikidata.org/wiki/Q319608")
+	addTriple2(resname,"https://www.wikidata.org/wiki/Property:P551", resname)
+}
+</script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.3.1/dist/leaflet.js"></script>
+</head>
+<body>
+<h2 align="center">Stolpersteine Mapview</h2>
+
+<div id="mapid" style="height:80%">
+<script>
+
+	var mymap = L.map('mapid').setView([51.505, -0.09], 13);
+
+	L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
+		maxZoom: 18,
+		attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
+			'<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+			'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+		id: 'mapbox.streets'
+	}).addTo(mymap);
+
+
+
+	var popup = L.popup();
+
+	function onMapClick(e) {
+		popup
+			.setLatLng(e.latlng)
+			.setContent("You clicked the map at " + e.latlng.toString())
+			.openOn(mymap);
+	}
+
+	mymap.on('click', onMapClick);
+
+</script>
+</div>
+RDF File Upload:<input type="file"  id="file-input" />
+
+</body>
+</html>
