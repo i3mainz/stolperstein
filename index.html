@@ -5,6 +5,7 @@
   <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
 <script>
 var collectRDF={}
+var prefixlist="@prefix owl: <http://www.w3.org/2002/07/owl#> . @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . @prefix xml: <http://www.w3.org/XML/1998/namespace> . @prefix xsd: <http://www.w3.org/2001/XMLSchema#> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . "
 var globalcounter=0
 var residencecounter=0
 var personcounter=0
@@ -164,7 +165,7 @@ var personnames={}
   } );
 function saveTextAsFile()
 {
-	var collect=""
+	var collect=prefixlist;
 	for(item in collectRDF){
 		collect+=collectRDF[item]
 	}
@@ -432,12 +433,18 @@ function addAddressData(subject){
 <div class="ui-widget">
 <table width="100%" border=0 cellpadding=0 cellspacing=0><tr><th colspan="2">Basic Information</th><th colspan=3>Address input</th><th>Loading previously saved file...</th></tr>
 <tr><td>First Name:</td><td> <input type="text" id="firstname" name="firstname"/> 
-</td><td>Streetname:</td><td><input type="text" id="streetname" name="streetname"/></td><td>No:<input type="text" id="housenumber" name="housenumber"/></td><td rowspan=5 align="right"><input type="file"  id="file-input" /><br/><br/>
-</td></tr><tr><td>Family Name:</td><td> <input type="text" id="familyname" name="familyname"/></td><td>Postcode:</td><td><input type="text" id="postcode" name="postcode"/></td><td>City:<input type="text" id="housenumber" name="housenumber"/></td></tr>
-<tr><td>Geocoordinate of stone:</td><td> <input type="text" id="geocoordinate" name="geocoordinate"/></td><td>Country:</td><td><input type="text" id="housenumber" name="housenumber"/></td><td>Geocoordinate: <input type="text" id="addrcoord" name="addrcoord"/></td></tr>
+</td><td>Streetname:</td><td><input type="text" id="streetname" name="streetname"/></td><td>No:<input type="text" id="housenumber" name="housenumber"/></td>
+<td rowspan=5 align="right"><input type="file"  id="file-input" /><br/><br/>
+</td></tr><tr><td>Family Name:</td><td> <input type="text" id="familyname" name="familyname"/></td><td>Postcode:</td>
+<td><input type="text" id="postcode" name="postcode"/></td><td>City:<input type="text" id="housenumber" name="housenumber"/></td></tr>
+<tr><td>Geocoordinate of stone:</td><td> <input type="text" id="geocoordinate" name="geocoordinate"/></td><td>Country:</td><td><input type="text" id="housenumber" name="housenumber"/></td>
+<td>Geocoordinate: <input type="text" id="addrcoord" name="addrcoord"/></td></tr>
 <tr><td>Date of birth: </td><td><input type="date" id="dateofbirth" name="dateofbirth"/></td><td>From: </td><td><input type="date" id="from" name="from"/> </td><td>To: <input type="date" id="to"/></td></tr>
 <tr><td> Date of death: </td><td><input type="date" id="dateofdeath" name="dateofdeath"/></td></tr>
-<tr><td colspan="2"><button id="basicinfo" onclick="addBasicInformation()">Add basic information</button></td><td colspan="2"><button id="addaddress" onclick="addAddressData()">Add residence address</button></td><td colspan=2><input type="hidden" id="Q5" value="person" text="person"/>Person URI: <select id="personnames"></select><button id="chooseperson" onclick="selectperson()">Select</button></td></tr></table><br/>
+<tr><td colspan="2"><button id="basicinfo" onclick="addBasicInformation()">Add basic information</button></td>
+<td colspan="2"><button id="addaddress" onclick="addAddressData()">Add residence address</button></td>
+<td colspan=2><input type="hidden" id="Q5" value="person" text="person"/>Person URI: <select id="personnames"></select>
+<button id="chooseperson" onclick="selectperson()">Select</button></td></tr></table><br/>
 <h3>Relation Input</h3>
 Person: <input type="text" id="subject"/>
 Relation:<select id="predicate">
