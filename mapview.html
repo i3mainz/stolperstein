@@ -2,6 +2,7 @@
 <head><title>Stolpersteine Input Page</title>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+<script src="wicket.js" type="text/javascript"></script>
   <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
   <script src="rdfstore_min.js"></script>
   
@@ -79,8 +80,9 @@ var relmap={
 "http://www.wikidata.org/wiki/Property:P412":"voice type",
 "http://www.wikidata.org/wiki/Property:P553":"website account on"
 }
-var prefixList="PREFIX owl: <http://www.w3.org/2002/07/owl#>  PREFIX wd: <http://www.wikidata.org/entity/> PREFIX foaf: <http://xmlns.com/foaf/0.1/>  PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>  PREFIX xml: <http://www.w3.org/XML/1998/namespace>  PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> "
+var prefixList="PREFIX owl: <http://www.w3.org/2002/07/owl#>  PREFIX geo: <http://www.opengis.net/ont/geosparql#> PREFIX wd: <http://www.wikidata.org/entity/> PREFIX foaf: <http://xmlns.com/foaf/0.1/>  PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>  PREFIX xml: <http://www.w3.org/XML/1998/namespace>  PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> "
 var currdfstore=null;
+var wkt = new Wkt.Wkt();
 $( function() {
 	  document.getElementById('file-input')
 	  .addEventListener('change', readRDFFile, false);
@@ -140,8 +142,17 @@ function findLastNonAlpha(input){
 }
 
 function displayGeometricObjects(){
+	personToWKT={}
+	currdfstore.execute(prefixList+" SELECT  ?pers ?wkt  WHERE { ?pers <http://stolpersteine.i3mainz.de/stolperStein#hasStolperstein> ?stol . ?stol geo:hasGeometry ?geom . ?geom geo:asWKT ?wkt .  }", function(success,results){ 
+				for(res in results){
+					console.log(results[res]["wkt"]["value"])
+					wkt.read(results[res]["wkt"]["value"]);
+					personToWKT[results[res]["pers"]["value"]]=wkt.toJson()["coordinates"];
+				}
+	});
+	console.log(personToWKT)
 	currdfstore.execute(prefixList+" SELECT ?person ?rel ?val ?valLabel WHERE { ?person rdf:type foaf:Person . ?person ?rel ?val . OPTIONAL {?val rdfs:label ?valLabel . } }", function(success,results){
-		console.log(success, results);
+		console.log(success,results)
 		persons={}
 		for(res in results){
 			if(!(results[res]["person"]["value"] in persons)){
@@ -158,18 +169,20 @@ function displayGeometricObjects(){
 		for(pers in persons){
 			tooltip="<html><b><a href=\""+pers+"\" target=\"_blank\">"+pers.substring(pers.indexOf("#")+1)+"</a></b><ul>"
 			for(rel in persons[pers]){
-				console.log(rel)
-				for(val in persons[pers][rel]){
-					tooltip+="<li><a href=\""+rel+"\" target=\"_blank\">"+(rel in relmap?relmap[rel]:rel.substring(rel.lastIndexOf("#")+1))+"</a> - "
-					for(vall in persons[pers][rel][val]){
-						tooltip+="<a href=\""+vall+"\" target=\"_blank\">"+(persons[pers][rel][val][vall].includes("#")?persons[pers][rel][val][vall].substring(persons[pers][rel][val][vall].lastIndexOf('#')+1):persons[pers][rel][val][vall])+"</a>"
+				console.log(rel)			
+					for(val in persons[pers][rel]){
+						tooltip+="<li><a href=\""+rel+"\" target=\"_blank\">"+(rel in relmap?relmap[rel]:rel.substring(rel.lastIndexOf("#")+1))+"</a> - "
+						for(vall in persons[pers][rel][val]){
+							tooltip+="<a href=\""+vall+"\" target=\"_blank\">"+(persons[pers][rel][val][vall].includes("#")
+							?persons[pers][rel][val][vall].substring(persons[pers][rel][val][vall].lastIndexOf('#')+1):persons[pers][rel][val][vall])+"</a>"
+						}
+						tooltip+="</li>"
 					}
-					tooltip+="</li>"
-				}
 			}
 			tooltip+="</ul></html>"
-			console.log(tooltip)
-			var marker = new L.marker([49.988458, 8.226914]); //opacity may be set to zero
+
+			//console.log(tooltip)
+			var marker = new L.marker(personToWKT[pers]); //opacity may be set to zero
 			marker.bindPopup(tooltip, {maxWidth : 560});
 			marker.addTo(mymap);
 		}
