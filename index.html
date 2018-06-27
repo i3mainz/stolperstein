@@ -5,7 +5,7 @@
   <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
 <script>
 var collectRDF={}
-var prefixlist="@prefix owl: <http://www.w3.org/2002/07/owl#> . @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . @prefix xml: <http://www.w3.org/XML/1998/namespace> . @prefix xsd: <http://www.w3.org/2001/XMLSchema#> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . "
+var prefixlist="@prefix owl: <http://www.w3.org/2002/07/owl#> . @prefix foaf: <http://xmlns.com/foaf/0.1/> . @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . @prefix xml: <http://www.w3.org/XML/1998/namespace> . @prefix xsd: <http://www.w3.org/2001/XMLSchema#> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . "
 var globalcounter=0
 var residencecounter=0
 var personcounter=0
@@ -335,6 +335,9 @@ function displayContents(contents) {
 	  collectRDF={}
 	  j=0;
 	  for(elem in splitted){
+		  if(splitted[elem].includes("@prefix")){
+				continue;
+		  }
 		  if(first){
 			  collectRDF[j]="<http://stolpersteine.i3mainz.de> rdf:type owl:Ontology . \n";
 			  first=false;
@@ -357,8 +360,8 @@ function displayContents(contents) {
 			}else{
 				relation+=splitted2[0]
 			}		
-			reformatted=splitted2[1].replace("<","").replace(">","").trim();			
-		  	relation+=" - <a target=\"_blank\" href=\""+splitted2[1].replace("<","").replace(">","").trim()+"\">"+$("#"+reformatted.substring(findLastNonAlpha(reformatted))).text()+"</a> - "
+			reformatted=splitted2[1].replace("<","").replace(">","").trim();
+		  	relation+=" - <a target=\"_blank\" href=\""+reformatted+"\">"+$("#"+reformatted.substring(findLastNonAlpha(reformatted))).text()+"</a> - "
 			//alert("#"+reformatted.substring(findLastNonAlpha(reformatted))).text())
 			if(splitted2[2].includes("<") && splitted2[2].includes(">")){
 				reformatted=splitted2[2].replace("<","").replace(">","").trim()
@@ -370,7 +373,12 @@ function displayContents(contents) {
                                 }
 				relation+="<a target=\"_blank\" href=\""+reformatted+"\">"+(label==""?reformatted.substring(findLastNonAlpha(reformatted)):label)+"</a>"
 			}else{
-				relation+=splitted2[2]
+				i=2;
+				relation+=splitted2[i]
+				while(splitted2.length>i+1){
+					i++;
+					relation+=" "+splitted2[i]
+				}
 			}
 			relation+="&nbsp;&nbsp;&nbsp;<button onclick=\"removeEntry("+j+")\">Remove</button></li>"
 			$('#relations').append(relation)
