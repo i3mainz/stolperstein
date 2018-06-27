@@ -338,7 +338,7 @@ function displayContents(contents) {
 		  if(splitted[elem].includes("@prefix")){
 				continue;
 		  }
-		  if(first){
+		  if(first || splitted[elem].includes("owl:Ontology")){
 			  collectRDF[j]="<http://stolpersteine.i3mainz.de> rdf:type owl:Ontology . \n";
 			  first=false;
 			  j+=1
