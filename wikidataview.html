@@ -1,0 +1,522 @@
+<html>
+<head><title>Wikidata View</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css" />
+<link rel="stylesheet" href="css/leaflet-search.css" />
+<script src="https://unpkg.com/leaflet@1.3.1/dist/leaflet.js"></script>
+<script src="https://unpkg.com/osmtogeojson@2.2.12/osmtogeojson.js"></script>
+  <script src="js/leaflet.polylinedecorator.js"></script>
+  <script src="js/wicket.js" type="text/javascript"></script>
+     <script src="js/leaflet.fullscreen.js"></script>
+	 <script src="js/leaflet-search.js"></script>
+   <script src="js/leaflet_legend.js"></script>
+      <script src="js/leaflet_easyprint.js"></script>
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+  
+<script>
+var prefixlist="@prefix owl: <http://www.w3.org/2002/07/owl#> .\n @prefix foaf: <http://xmlns.com/foaf/0.1/> .\n @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . @prefix xml: <http://www.w3.org/XML/1998/namespace> . \n @prefix xsd: <http://www.w3.org/2001/XMLSchema#> . \n @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . \n"
+var overlayMaps=[]
+var ttlExport="";
+
+function saveToOWL(){
+    saveTextAsFile();
+}
+
+function saveTextAsFile()
+{
+    var blob = new Blob([prefixlist+"<http://semgis.i3mainz.de> rdf:type owl:Ontology . \n"+ttlExport], {type:'text/plain'});
+    var filename = "res.ttl";
+    var a = document.createElement('a');
+    a.style = "display: none";  
+    var url = window.URL.createObjectURL(blob);
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+        a.click();
+    setTimeout(function(){
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);  
+    }, 1000);
+    
+    
+}
+
+function buildOverpassApiUrl(map, overpassQuery) {
+        var bounds = map.getBounds().getSouth() + ',' + map.getBounds().getWest() + ',' + map.getBounds().getNorth() + ',' + map.getBounds().getEast();
+        var nodeQuery = 'node[' + overpassQuery + '](' + bounds + ');';
+        var wayQuery = 'way[' + overpassQuery + '](' + bounds + ');';
+        var relationQuery = 'relation[' + overpassQuery + '](' + bounds + ');';
+        var query = '?data=[out:json][timeout:15];(' + nodeQuery + wayQuery + relationQuery + ');out geom;';
+        var baseUrl = 'https://overpass-api.de/api/interpreter';
+        var resultUrl = baseUrl + query;
+        return resultUrl;
+}
+
+function getOSMAttributesForCoordinate(map){
+if(map.getZoom()>=15){
+$.get(buildOverpassApiUrl(map,"wikidata"), function (osmDataAsJson) {
+          var resultAsGeojson = osmtogeojson(osmDataAsJson);
+		  var adminLayer=null
+          var resultLayer = L.geoJson(resultAsGeojson, {
+            style: function (feature) {
+              return {color: "#ff0000"};
+            },
+            filter: function (feature, layer) {			
+				
+              return true;
+            },
+            onEachFeature: function (feature, layer) {
+              var popupContent = "";
+              popupContent = popupContent + "<b>" + feature.properties.type + "/" + feature.properties.id + "</b>";
+              var indid="<http://www.linkedgeodata.org/"+feature.properties.type+feature.properties.id+">";
+              
+              popupContent+="<br/>OSM Attributes:<ul>"
+              wdkeyset={}
+              console.log("Wikidata: "+feature.properties.tags["wikidata"])
+              if(feature.properties.tags["wikidata"]!="" && feature.properties.tags["wikidata"]!=undefined){
+                    wdkeyset=getAttributesForWikidataID(feature.properties.tags["wikidata"])
+             }
+              var keys = Object.keys(feature.properties.tags);
+              if(feature.properties.tags.length>0){
+					var wicket = new Wkt.Wkt();
+					wicket.read(JSON.stringify(feature["geometry"]));
+					var wkt = wicket.write();
+					ttlExport+="<http://www.linkedgeodata.org/"+feature.properties.type+feature.properties.id+"> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#NamedIndividual> .\n"
+					ttlExport+="<http://www.linkedgeodata.org/"+feature.properties.type+feature.properties.id+"> <http://www.opengis.net/ont/geosparql#hasGeometry> \""+wkt+"\"^^<http://www.opengis.net/ont/geosparql#wktLiteral> .\n";
+					var isPolygon = (feature.geometry) && (feature.geometry.type !== undefined) && (feature.geometry.type === "Polygon");
+					if (isPolygon) {
+						feature.geometry.type = "Point";
+						var polygonCenter = L.latLngBounds(feature.geometry.coordinates[0]).getCenter();
+						feature.geometry.coordinates = [ polygonCenter.lat, polygonCenter.lng ];
+						var wicket = new Wkt.Wkt();
+						wicket.read(JSON.stringify(feature.geometry));
+						var wkt = wicket.write();
+						ttlExport+="<http://www.linkedgeodata.org/"+feature.properties.type+feature.properties.id+"> <http://www.opengis.net/ont/geosparql#hasGeometry> \""+wkt+"\"^^<http://www.opengis.net/ont/geosparql#wktLiteral> .\n";
+					}
+              }
+              keys.forEach(function (key) {
+              var ignorekeys=[]
+                popupContent = popupContent + "<li>"
+                                /*alert(JSON.stringify(wdkeyset))
+                                if(key in osmToWikidataMap)
+                                    alert(JSON.stringify(Object.keys(Object.values(osmToWikidataMap[key])[0])[0]))*/
+				if(key=="wikidata"){
+					popupContent = popupContent + "<span style=\"color:#ff0000\">wikidata</span> - <a href=\"https://www.wikidata.org/entity/"+feature.properties.tags[key]+"\"  target=\"_blank\" style=\"color:#ff0000\">" + feature.properties.tags[key] + "</a></li>";
+					ttlExport+=indid+" <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.wikidata.org/entity/"+feature.properties.tags[key]+"> . \n"  
+				}else if(key in osmToWikidataMap && (Object.keys(Object.values(osmToWikidataMap[key])[0])[0] in wdkeyset)){
+                                                popupContent+="<a style=\"color:green\" href=\""+Object.keys(osmToWikidataMap[key])[0]+"\"  target=\"_blank\">"+key+"</a>"
+						wdval=Object.values(wdkeyset[Object.keys(Object.values(osmToWikidataMap[key])[0])[0]])[0].split(";")[1]
+						if(feature.properties.tags[key].includes("http")){
+							ttlExport+=indid+(feature.properties.tags[key].includes("http")?"<"+feature.properties.tags[key]+">":"\""+feature.properties.tags[key]+"\"")+" "+(wdval.includes("http")?"<"+wdval+">":"\""+wdval+"\"")+" . \n"  
+                        }
+                        if(wdval==feature.properties.tags[key]){
+								if(feature.properties.tags[key].includes("http")){
+									popupContent = popupContent + " - <a href=\""+Object.keys(osmToWikidataMap[key])[0]+"\"  target=\"_blank\" style=\"color:green\">" + feature.properties.tags[key] + "</a></li>";
+								}else{
+									popupContent = popupContent + " - <span style=\"color:green\">" + feature.properties.tags[key] + "</span></li>";
+								}
+                                
+                        }else{
+							if(feature.properties.tags[key].includes("http")){
+								popupContent = popupContent + " - <a href=\""+Object.keys(osmToWikidataMap[key])[0]+"\"  target=\"_blank\" style=\"color:orange\">" + feature.properties.tags[key] + "</a>" 
+							}else{
+								popupContent = popupContent + " - <span style=\"color:orange\">" + feature.properties.tags[key] + "</span>";
+							}
+							if(wdval.includes("http")){
+								popupContent +=" | <a href=\""+wdval+"\" target=\"_blank\">"+wdval+"</a></li>";
+							}else{
+								popupContent +=" | <span style=\"color:orange\">"+wdval+"</span></li>";
+							}
+                   }
+                }else if(key in osmToWikidataMap && feature.properties.tags[key] in osmToWikidataMap[key] && "http://www.wikidata.org/entity/P31" in wdkeyset && Object.values(wdkeyset["http://www.wikidata.org/entity/P31"])[0].substring(0,Object.values(wdkeyset["http://www.wikidata.org/entity/P31"])[0].indexOf(";"))==Object.keys(osmToWikidataMap[key][feature.properties.tags[key]])[0]){
+					 popupContent+="<a style=\"color:green\" href=\""+Object.keys(osmToWikidataMap[key])[0]+"\"  target=\"_blank\">"+key+"</a>"
+					if(feature.properties.tags[key].includes("http")){
+						popupContent = popupContent + " - <a href=\""+Object.keys(osmToWikidataMap[key])[0]+"\"  target=\"_blank\" style=\"color:green\">" + feature.properties.tags[key] + "</a></li>";
+					}else{
+						popupContent = popupContent + " - <a href=\""+Object.keys(osmToWikidataMap[key][feature.properties.tags[key]])[0]+"\" target=\"_blank\" style=\"color:green\">" + feature.properties.tags[key] + "</a></li>";
+					}
+				}else if(key in osmToWikidataMap){
+						var color="orange"
+                        popupContent+="<a style=\"color:"+color+"\" href=\""+Object.keys(osmToWikidataMap[key])[0]+"\" target=\"_blank\">"+key+"</a>"
+                                        if(feature.properties.tags[key].includes(".jpg") || feature.properties.tags[key].includes(".JPG") || feature.properties.tags[key].includes(".svg") || feature.properties.tags[key].includes(".SVG")
+						|| feature.properties.tags[key].includes(".png") || feature.properties.tags[key].includes(".PNG") || feature.properties.tags[key].includes(".gif") || feature.properties.tags[key].includes(".GIF")){
+						popupContent+=" - <a href=\""+feature.properties.tags[key]+"\" target=\"_blank\"><img src=\""+feature.properties.tags[key].replace("http","https")+"\" height=\"30\" width=\"30\"></a></li>"			
+					}else if(feature.properties.tags[key].includes("http")){
+						popupContent = popupContent + " - <a href=\""+feature.properties.tags[key]+"\" target=\"_blank\">" + feature.properties.tags[key] + "</a></li>";
+					}else if(feature.properties.tags[key].startsWith("www.")){
+						popupContent+=" - <a href=\"https://"+feature.properties.tags[key]+"\" target=\"_blank\">"+feature.properties.tags[key]+"</a></li>"
+					}else{
+						popupContent = popupContent + " - " + feature.properties.tags[key] + "</li>";
+					}
+                }else{
+                    popupContent+="<span style=\"color:black\">"+key+"</span>"
+			if(feature.properties.tags[key].includes(".jpg") || feature.properties.tags[key].includes(".JPG") || feature.properties.tags[key].includes(".svg") || feature.properties.tags[key].includes(".SVG")
+				|| feature.properties.tags[key].includes(".png") || feature.properties.tags[key].includes(".PNG") || feature.properties.tags[key].includes(".gif") || feature.properties.tags[key].includes(".GIF")){
+			    	popupContent+=" - <a href=\""+feature.properties.tags[key]+"\" target=\"_blank\"><img src=\""+feature.properties.tags[key].replace("http","https")+"\" height=\"30\" width=\"30\"></a></li>"			
+		    }else if(feature.properties.tags[key].includes("http")){
+					popupContent = popupContent + " - <a href=\""+feature.properties.tags[key]+"\" target=\"_blank\">" + feature.properties.tags[key] + "</a></li>";
+		    }else if(feature.properties.tags[key].startsWith("www.")){
+			    	popupContent+="<a href=\"https://"+feature.properties.tags[key]+"\" target=\"_blank\">"+feature.properties.tags[key]+"</a></li>"
+			}else{
+					popupContent = popupContent + " - " + feature.properties.tags[key] + "</li>";
+		    }
+                     
+                }
+              });
+              popupContent = popupContent + "</ul>"
+			  //alert(wdkeyset)
+              popupContent+="Wikidata Items: "/*<b>"+Object.values(wdkeyset["rdfs:label"])[0]+"</b>*/+"<ul>"
+              for(key in wdkeyset){
+					//if(key=="rdfs:label")
+					//	continue;
+					var isgreen=false;
+                    giventag=""
+                  if(!(Object.values(wdkeyset[key])[0].includes("statement"))){
+                            spl=Object.values(wdkeyset[key])[0].split(";")
+							wdval=spl[1]
+							if(key.includes("P31")){
+								//alert("P31: "+spl[0])
+								if(spl[0] in wikidataToOSMMap){
+									tags=Object.keys(wikidataToOSMMap[spl[0]][0])[0].split("=")
+									//alert(JSON.stringify(tags))
+									if(tags[0] in feature.properties.tags && feature.properties.tags[tags[0]]==tags[1]){
+										popupContent+="<li><a href=\""+key+"\" target=\"_blank\" style=\"color:green\">"+Object.keys(wdkeyset[key])[0]+"</a> - "
+										isgreen=true;
+									}
+								}
+								//alert(JSON.stringify(wikidataToOSMMap))
+							}
+							else if(key in wikidataToOSMMap){
+								//alert(JSON.stringify(wikidataToOSMMap[key]))
+								var finished=false;
+								for(equiv in Object.values(wikidataToOSMMap[key])[0]){
+								
+									if(feature.properties.tags[equiv]){
+										popupContent+="<li><a href=\""+key+"\" target=\"_blank\" style=\"color:green\">"+Object.keys(wdkeyset[key])[0]+"</a> - "
+										giventag=feature.properties.tags[equiv]
+										finished=true;
+									}
+								}
+								if(!finished){
+									popupContent+="<li><a href=\""+key+"\" target=\"_blank\" style=\"color:orange\">"+Object.keys(wdkeyset[key])[0]+"</a> - "
+								}
+							}else{
+                                    popupContent+="<li><a href=\""+key+"\" target=\"_blank\">"+Object.keys(wdkeyset[key])[0]+"</a> - "
+                            }
+			    if(spl[0].includes(".jpg") || spl[0].includes(".JPG")|| spl[0].includes(".svg") || spl[0].includes(".SVG")
+				|| spl[0].includes(".png") || spl[0].includes(".PNG")){
+			    	popupContent+="<a href=\""+spl[0]+"\" target=\"_blank\"";
+					popupContent+="><img src=\""+spl[1].replace("http","https")+"\" height=\"30\" width=\"30\"></a></li>"
+					ttlExport+=indid+" <"+key+"> <"+spl[0]+"> . \n"  
+			    }else if(spl[0].includes("http")){
+					if((finished && giventag==spl[1]) || isgreen){
+						popupContent+="<a href=\""+spl[0]+"\" target=\"_blank\" style=\"color:green\">"+spl[1]+"</a></li>"
+					}else if(finished && giventag!=spl[1] && giventag!=""){
+						popupContent+="<a href=\""+spl[0]+"\" target=\"_blank\" style=\"color:orange\">"+spl[1]+"</a> | "+(giventag.includes("http")?"<a href=\""+giventag+"\" style=\"color:orange\">"+giventag+"</a>":"<span style=\"color:orange\">"+giventag+"</span>")+"</li>"
+					}else{
+						popupContent+="<a href=\""+spl[0]+"\" target=\"_blank\">"+spl[1]+"</a></li>"
+					}	
+					ttlExport+=indid+" <"+key+"> <"+spl[0]+"> . \n"  
+			    }else if(spl[0].startsWith("www.")){
+					if((finished && giventag==spl[1]) || isgreen){
+						popupContent+="<a href=\"https://"+spl[0]+"\" target=\"_blank\" style=\"color:green\">"+spl[1]+"</a></li>"
+					}else if(finished && giventag!=spl[1] && giventag!=""){
+						popupContent+="<a href=\"https://"+spl[0]+"\" target=\"_blank\" style=\"color:orange\">"+spl[1]+"</a> | "+(giventag.includes("http")?"<a href=\""+giventag+"\" style=\"color:orange\">"+giventag+"</a>":"<span style=\"color:orange\">"+giventag+"</span>")+"</li>"
+					}else{
+						popupContent+="<a href=\"https://"+spl[0]+"\" target=\"_blank\">"+spl[1]+"</a></li>"
+					}		
+					ttlExport+=indid+" <"+key+"> <"+spl[0]+"> . \n"  
+			    }else{
+					if((finished && giventag==spl[1]) || isgreen){
+						popupContent+="<span style=\"color:green\">"+spl[1]+"</span></li>"
+					}else if(finished && giventag!=spl[1] && giventag!=""){
+						popupContent+="<span style=\"color:orange\">"+spl[1]+" | "+giventag+"</span></li>"
+					}else{
+						popupContent+=spl[1]+"</li>"
+					}
+			    	ttlExport+=indid+" <"+key+">  \""+spl[0]+"\" . \n"  
+			    }
+                        }
+              }
+              popupContent+="</ul>"
+              layer.bindPopup(popupContent,{maxWidth : 560});
+             // console.log(ttlExport)
+            }
+          }).addTo(map);
+        });
+    }
+}
+
+function getWikidataAttributesForCoordinate(){
+    //wikidataQuery
+}
+
+function getDistance(origin, destination) {
+    // return distance in meters
+    var lon1 = toRadian(origin[1]),
+        lat1 = toRadian(origin[0]),
+        lon2 = toRadian(destination[1]),
+        lat2 = toRadian(destination[0]);
+
+    var deltaLat = lat2 - lat1;
+    var deltaLon = lon2 - lon1;
+
+    var a = Math.pow(Math.sin(deltaLat/2), 2) + Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin(deltaLon/2), 2);
+    var c = 2 * Math.asin(Math.sqrt(a));
+    var EARTH_RADIUS = 6371;
+    return c * EARTH_RADIUS * 1000;
+}
+function toRadian(degree) {
+    return degree*Math.PI/180;
+}
+
+	
+function wikidataAroundQuery(coord,width){
+var markers=[]
+var wikidatagroup=L.layerGroup().addTo(map)
+var query = [ "PREFIX bd: <http://www.bigdata.com/rdf#>\n",
+ "PREFIX wikibase: <http://wikiba.se/ontology#>\n",
+ "PREFIX wdt: <http://www.wikidata.org/prop/direct/>\n",
+ "PREFIX wd: <http://www.wikidata.org/entity/>\n",
+ "PREFIX skos: <http://www.w3.org/2004/02/skos/core#>\n",
+ "SELECT ?item ?itemLabel ?location ?rel ?relLabel ?val ?valLabel  WHERE\n",
+ "{\n",
+ "SERVICE wikibase:around { 	\n",
+  " ?item wdt:P625  ?location .\n",
+   "bd:serviceParam wikibase:center \"Point("+coord.lng+" "+coord.lat+")\"^^geo:wktLiteral. \n",
+  " bd:serviceParam wikibase:radius \""+width/1000+"\".\n",
+ "}\n",
+      "?item ?rell ?val .\n",
+      " ?rel wikibase:directClaim ?rell .\n",
+ 	"SERVICE wikibase:label { bd:serviceParam wikibase:language \"en\" }\n",
+" }\n",
+ "ORDER BY ?itemLabel\n",
+    ].join(" ");
+	console.log(query)
+	var queryUrl = "https://query.wikidata.org/sparql?query="+ encodeURIComponent(query) +"&format=json";
+  var res={}
+//var queryUrl = encodeURI( "https://query.wikidata.org/sparql?query="+query+"&format=json" );
+    $.ajax({
+        dataType: "json",  
+        url: queryUrl,
+        async:false,
+        success: function( _data ) {
+            var wicket = new Wkt.Wkt();
+            var myLayer = L.geoJSON().addTo(map);
+            var results = _data.results.bindings;
+            var mark;
+            lastcoord=""
+            popupBuffer="<ul>"
+            var popupMap={}
+             for ( var i in results ) {
+                                //alert(results[i]["location"]["value"])
+                                if(lastcoord!=results[i]["location"]["value"]){
+                                    if(lastcoord!=""){
+                                       Object.keys(popupMap).sort().map(function(cls) {
+                                                    popupBuffer+=popupMap[cls]
+                                       });
+                                        popupBuffer+="</ul>";
+                                        mark.bindPopup(popupBuffer);
+                                        popupBuffer="<ul>";
+                                        popupMap={}
+                                    }
+                                    popupBuffer+="<b><a href=\""+results[i]["item"]["value"]+"\" target=\"_blank\">"+results[i]["itemLabel"]["value"]+"</a></b>"
+                                    popupMap[results[i]["relLabel"]["value"]+results[i]["valLabel"]["value"]]="<li><a href=\""+results[i]["rel"]["value"]+"\" target=\"_blank\">"+results[i]["relLabel"]["value"]+"</a> - <a href=\""+results[i]["val"]["value"]+"\">"+results[i]["valLabel"]["value"]+"</a></li>";
+                                    wicket.read(results[i]["location"]["value"].replace("Point","POINT"));
+                                    // "greenIcon from official documentation noted above.
+                                    var feature = wicket.toJson();
+                                    //alert(JSON.stringify(feature.coordinates))
+                                    var greenIcon = new L.Icon({
+                                        iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+                                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                                        iconSize: [25, 41],
+                                        iconAnchor: [12, 41],
+                                        popupAnchor: [1, -34],
+                                        shadowSize: [41, 41]
+                                    });
+                                    mark=L.marker([feature.coordinates[1],feature.coordinates[0]],{icon: greenIcon})
+                                    wikidatagroup.addLayer(mark)
+                                    lastcoord=results[i]["location"]["value"]
+                                }else{
+                                   if(results[i]["val"]["value"].includes(".jpg") || results[i]["val"]["value"].includes(".JPG") || results[i]["val"]["value"].includes(".svg") || results[i]["val"]["value"].includes(".SVG")
+						|| results[i]["val"]["value"].includes(".png") || results[i]["val"]["value"].includes(".PNG") || results[i]["val"]["value"].includes(".gif") || results[i]["val"]["value"].includes(".GIF")){
+						popupMap[results[i]["relLabel"]["value"]+results[i]["valLabel"]["value"]]="<a href=\""+results[i]["rel"]["value"]+"\" target=\"_blank\">"+results[i]["relLabel"]["value"]+"</a> - <a href=\""+results[i]["val"]["value"]+"\" target=\"_blank\"><img src=\""+results[i]["val"]["value"].replace("http","https")+"\" height=\"30\" width=\"30\"></a></li>"	
+                                    
+                                    }else{
+                                         popupMap[results[i]["relLabel"]["value"]+results[i]["valLabel"]["value"]]="<li><a href=\""+results[i]["rel"]["value"]+"\" target=\"_blank\">"+results[i]["relLabel"]["value"]+"</a> - <a href=\""+results[i]["val"]["value"]+"\">"+results[i]["valLabel"]["value"]+"</a></li>";
+                                    }
+                                }
+            }
+        }
+    });  
+    layercontrol.addBaseLayer(wikidatagroup, 'wikidata');
+    return res;
+}
+
+function getAttributesForWikidataID(qid){
+var query = [ "PREFIX bd: <http://www.bigdata.com/rdf#>\n",
+                "PREFIX wikibase: <http://wikiba.se/ontology#>\n",
+                "PREFIX wdt: <http://www.wikidata.org/prop/direct/>\n",
+                "PREFIX wd: <http://www.wikidata.org/entity/>\n",
+                "PREFIX skos: <http://www.w3.org/2004/02/skos/core#>\n",          
+                "SELECT DISTINCT ?itemLabel ?rel ?relLabel ?val ?valLabel\n",
+                "WHERE\n",
+                "{\n",
+				"\twd:"+qid+" rdfs:label ?itemLabel .",
+                "\twd:"+qid+" ?rell ?val .\n",
+                "\t?rel wikibase:directClaim ?rell .\n",
+                "\tSERVICE wikibase:label { bd:serviceParam wikibase:language \"en\" }\n",
+                "}\n",
+                "ORDER BY ?relLabel"
+    ].join(" ");
+  var queryUrl = "https://query.wikidata.org/sparql?query="+ encodeURIComponent(query) +"&format=json";
+  var res={}
+//var queryUrl = encodeURI( "https://query.wikidata.org/sparql?query="+query+"&format=json" );
+    $.ajax({
+        dataType: "json",  
+        url: queryUrl,
+        async:false,
+        success: function( _data ) {
+            //console.log(JSON.stringify(_data))
+            var results = _data.results.bindings;
+             for ( var i in results ) {
+                 if(results[i]["rel"]["value"]!=undefined && results[i]["valLabel"]["value"]!=undefined){
+                        res[results[i]["rel"]["value"]]=JSON.parse("{\""+results[i]["relLabel"]["value"]+"\":\""+results[i]["val"]["value"]+";"+results[i]["valLabel"]["value"]+"\"}")
+                 }
+            }
+			res["rdfs:label"]=JSON.parse("{\"rdfs:label\":\"http://www.wikidata.org/entity/"+qid+";"+results[i]["itemLabel"]["value"]+"\"}")
+            //alert(JSON.stringify(res))
+        }
+    });  
+    return res;
+}
+
+function getMatchingWikiDataOSMAttributes(){
+var query = [
+"PREFIX bd: <http://www.bigdata.com/rdf#>\n" ,
+                "PREFIX wikibase: <http://wikiba.se/ontology#>\n" ,
+                "PREFIX wdt: <http://www.wikidata.org/prop/direct/>\n" ,
+                "PREFIX wd: <http://www.wikidata.org/entity/>\n" ,
+                "SELECT DISTINCT ?wdclass ?wdclassLabel ?osm\n" ,
+                "WHERE\n" ,
+                "{\n" ,
+                "\t?wdclass wdt:P1282 ?osm .\n" ,
+                "\tSERVICE wikibase:label { bd:serviceParam wikibase:language \"en\" }\n" ,
+                "}\n" ,
+                "ORDER BY ?wdclassLabel"
+].join(" ");
+var queryUrl = "https://query.wikidata.org/sparql?query="+ encodeURIComponent(query) +"&format=json";
+//var queryUrl = encodeURI( "https://query.wikidata.org/sparql?query="+query+"&format=json" );
+    $.ajax({
+        dataType: "json",  
+        async: false,
+        url: queryUrl,
+        success: function( _data ) {
+            var results = _data.results.bindings;
+            for ( var i in results ) {
+                 if(results[i]["wdclass"]["value"]!=undefined && results[i]["osm"]["value"]!=undefined){
+                  osmval=results[i]["osm"]["value"].replace("Key:","").replace("Tag:","");
+                  if(osmval.includes("=")){
+                        if(!osmToWikidataMap[osmval.substring(0,osmval.indexOf('='))]){
+                            osmToWikidataMap[osmval.substring(0,osmval.indexOf('='))]={}
+                        }
+                        osmToWikidataMap[osmval.substring(0,osmval.indexOf('='))][osmval.substring(osmval.indexOf('=')+1)]=JSON.parse("{\""+results[i]["wdclass"]["value"]+"\":\""+("wdclassLabel" in results[i]?results[i]["wdclassLabel"]["value"]:"")+"\"}")
+                  }else{
+                        if(!osmToWikidataMap[osmval]){
+                            osmToWikidataMap[osmval]={}
+                        }
+                        osmToWikidataMap[osmval][""]=JSON.parse("{\""+results[i]["wdclass"]["value"]+"\":\""+("wdclassLabel" in results[i]?results[i]["wdclassLabel"]["value"]:"")+"\"}")
+
+                  }
+                  				    if(!(wikidataToOSMMap[results[i]["wdclass"]["value"]])){
+						 wikidataToOSMMap[results[i]["wdclass"]["value"]]=[]
+					}
+					wikidataToOSMMap[results[i]["wdclass"]["value"]].push(JSON.parse("{\""+osmval+"\":\""+("wdclassLabel" in results[i]?results[i]["wdclassLabel"]["value"]:"")+"\"}"));
+                 }
+            }
+            wikidataToOSMMap["http://www.w3.org/2000/01/rdf-schema#label"]={}
+            wikidataToOSMMap["http://www.w3.org/2000/01/rdf-schema#label"][""]="name"
+            osmToWikidataMap["name"]={}
+            osmToWikidataMap["name"][""]="http://www.w3.org/2000/01/rdf-schema#label"
+            console.log("osmToWikidataMap: "+JSON.stringify(osmToWikidataMap))
+            console.log("wikidataToOSMMap: "+JSON.stringify(wikidataToOSMMap))
+        }
+    });
+}
+
+
+function loadItems(){
+    getOSMAttributesForCoordinate(map);
+}
+
+function loadWDItems(){
+	var distance = getDistance([map.getBounds().getSouth(), map.getBounds().getWest()],[map.getBounds().getNorth(),map.getBounds().getEast()])
+        width=distance/2
+	wikidataAroundQuery(map.getCenter(),width);
+}
+
+</script>
+
+</head>
+<body>
+<h2 align="center">Wikidata Mapview</h2>
+
+<div id="mapid" style="height:80%;border:5px solid black;">
+<script>
+var wikidataToOSMMap={}
+var osmToWikidataMap={}
+	var map = L.map('mapid',{fullscreenControl: true,fullscreenControlOptions: {position: 'topleft'}}).locate({setView: true, maxZoom: 16});//.setView([51.505, -0.09], 13);
+	map.addControl( new L.Control.Search({
+		url: 'http://nominatim.openstreetmap.org/search?format=json&q={s}',
+		jsonpParam: 'json_callback',
+		propertyName: 'display_name',
+		propertyLoc: ['lat','lon'],
+		marker: L.circleMarker([0,0],{radius:30}),
+		autoCollapse: true,
+		autoType: false,
+		minLength: 2
+	}));
+        
+getMatchingWikiDataOSMAttributes();
+		
+    map.on('zoomend', function() {
+		if(map.getZoom()>=15){
+			$('#mapid').css("border","5px solid green")
+		}else{
+			$('#mapid').css("border","5px solid black")
+		}
+	});
+
+
+	var layer = L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
+		maxZoom: 18,
+		attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
+			'<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+			'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+		id: 'mapbox.streets'
+	}).addTo(map);
+		var wmsLayer = L.tileLayer.wms('https://sgx.geodatenzentrum.de/wms_topplus_web_open', {
+layers: 'web',
+format: 'image/png',
+ transparent: true,
+attribution: '&copy; Bundesamt f&uuml;r Kartographie und Geod&auml;sie 2017, <a href="http://sg.geodatenzentrum.de/web_public/Datenquellen_TopPlus_Open.pdf">Datenquellen</a>'
+}).addTo(map);
+	var baseMaps = {
+    "BKG": wmsLayer,
+        "OSM": layer
+	};
+	L.control.scale({
+	position: 'bottomright',
+	imperial: false
+}).addTo(map);
+var layercontrol=L.control.layers(baseMaps,overlayMaps).addTo(map);
+
+</script>
+</div>
+<button type="button" id="loadbutton" onClick="loadItems()">Load OSM Items with Wikidata</button>
+<button type="button" id="loadbutton2" onClick="loadWDItems()">Load Wikidata Items with Geocoordinate</button>
+<button type="button" id="saveOWLButton" onClick="saveToOWL()">Save OSM Items as OWL</button>
+</body>
+</html>
+ 
