@@ -1,0 +1,537 @@
+<html>
+<head><title>Stolpersteine Input Page</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+<script>
+var collectRDF={}
+var prefixlist="@prefix owl: <http://www.w3.org/2002/07/owl#> . @prefix foaf: <http://xmlns.com/foaf/0.1/> . @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . @prefix xml: <http://www.w3.org/XML/1998/namespace> . @prefix xsd: <http://www.w3.org/2001/XMLSchema#> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . "
+var globalcounter=0
+var residencecounter=0
+var personcounter=0
+collectRDF[globalcounter++]="<http://stolpersteine.i3mainz.de> rdf:type owl:Ontology . \n";
+var personnames={}
+  $( function() {
+  $("#dateres").datepicker({
+        onSelect: function(date) {
+            $('#object').val(date+"^^xsd:date")
+        },
+      showOn: "button",
+      dateFormat: 'yy-mm-dd',
+      buttonImage: "https://jqueryui.com/resources/demos/datepicker/images/calendar.gif",
+      buttonImageOnly: true,
+      buttonText: "Select date"
+   });
+   $('#datebutton').click(function() {
+        $('#dateres').datepicker('show');
+    });
+	  document.getElementById('file-input')
+	  .addEventListener('change', readSingleFile, false);
+    $.widget( "custom.combobox", {
+      _create: function() {
+        this.wrapper = $( "<span>" )
+          .addClass( "custom-combobox" )
+          .insertAfter( this.element );
+ 
+        this.element.hide();
+        this._createAutocomplete();
+        this._createShowAllButton();
+      },
+ 
+      _createAutocomplete: function() {
+        var selected = this.element.children( ":selected" ),
+          value = selected.val() ? selected.text() : "";
+ 
+        this.input = $( "<input>" )
+          .appendTo( this.wrapper )
+          .val( value )
+          .attr( "title", "" )
+          .addClass( "custom-combobox-input ui-widget ui-widget-content ui-state-default ui-corner-left" )
+          .autocomplete({
+            delay: 0,
+            minLength: 0,
+            source: $.proxy( this, "_source" )
+          })
+          .tooltip({
+            classes: {
+              "ui-tooltip": "ui-state-highlight"
+            }
+          });
+ 
+        this._on( this.input, {
+          autocompleteselect: function( event, ui ) {
+            ui.item.option.selected = true;
+            this._trigger( "select", event, {
+              item: ui.item.option
+            });
+      		$('#more').attr("href",$("option:selected",$('#predicate')).val())
+          },
+ 
+          autocompletechange: "_removeIfInvalid"
+        });
+      },
+ 
+      _createShowAllButton: function() {
+        var input = this.input,
+          wasOpen = false;
+ 
+        $( "<a>" )
+          .attr( "tabIndex", -1 )
+          .attr( "title", "Show All Items" )
+          .tooltip()
+          .appendTo( this.wrapper )
+          .button({
+            icons: {
+              primary: "ui-icon-triangle-1-s"
+            },
+            text: false
+          })
+          .removeClass( "ui-corner-all" )
+          .addClass( "custom-combobox-toggle ui-corner-right" )
+          .on( "mousedown", function() {
+            wasOpen = input.autocomplete( "widget" ).is( ":visible" );
+          })
+          .on( "click", function() {
+            input.trigger( "focus" );
+
+            // Close if already visible
+            if ( wasOpen ) {
+              return;
+            }
+ 
+            // Pass empty string as value to search for, displaying all results
+            input.autocomplete( "search", "" );
+          });
+      },
+ 
+      _source: function( request, response ) {
+        var matcher = new RegExp( $.ui.autocomplete.escapeRegex(request.term), "i" );
+        response( this.element.children( "option" ).map(function() {
+          var text = $( this ).text();
+          if ( this.value && ( !request.term || matcher.test(text) ) )
+            return {
+              label: text,
+              value: text,
+              option: this
+            };
+        }) );
+      },
+ 
+      _removeIfInvalid: function( event, ui ) {
+ 
+        // Selected an item, nothing to do
+        if ( ui.item ) {
+          return;
+        }
+ 
+        // Search for a match (case-insensitive)
+        var value = this.input.val(),
+          valueLowerCase = value.toLowerCase(),
+          valid = false;
+        this.element.children( "option" ).each(function() {
+          if ( $( this ).text().toLowerCase() === valueLowerCase ) {
+            this.selected = valid = true;
+            return false;
+          }
+        });
+ 
+        // Found a match, nothing to do
+        if ( valid ) {
+          return;
+        }
+ 
+        // Remove invalid value
+        this.input
+          .val( "" )
+          .attr( "title", value + " didn't match any item" )
+          .tooltip( "open" );
+        this.element.val( "" );
+        this._delay(function() {
+          this.input.tooltip( "close" ).attr( "title", "" );
+        }, 2500 );
+        this.input.autocomplete( "instance" ).term = "";
+      },
+ 
+      _destroy: function() {
+        this.wrapper.remove();
+        this.element.show();
+      }
+    });
+ 
+    $( "#predicate" ).combobox();
+    $( "#toggle" ).on( "click", function() {
+      $( "#predicate" ).toggle();
+    });
+  } );
+function saveTextAsFile()
+{
+	var collect=prefixlist;
+	for(item in collectRDF){
+		collect+=collectRDF[item]
+	}
+    var blob = new Blob([collect], {type:'text/plain'});
+    var filename = "res.ttl";
+    var a = document.createElement('a');
+    a.style = "display: none";  
+    var url = window.URL.createObjectURL(blob);
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+        a.click();
+    setTimeout(function(){
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);  
+    }, 1000);
+    
+    
+}
+
+function getOptionString(){
+    result=""
+    for(key in personnames){
+            result+="<option value=\""+personnames[key]+"\">"+key+"</option>"
+    }
+    return result;
+}
+
+function selectperson(){
+        $('#subject').val($( "#personnames option:selected" ).val())
+}
+
+function addTriple(){
+	if($('#subject').val()!="" && $('#predicate').val()!="" && $('#object').val()!=""){
+		tripleline=""
+	    if($('#subject').val().includes("http"))
+			tripleline+="<"+$('#subject').val()+"> "
+		else{
+			tripleline+="<http://stolpersteine.i3mainz.de/person#"+$('#subject').val().trim().replace(" ","_")+"> "
+			personnames[$('#subject').val().trim()]="http://stolpersteine.i3mainz.de/person#"+$('#subject').val().trim().replace(" ","_")
+                        $('#personnames').html(getOptionString())    
+                }
+		tripleline+="<"+$('#predicate').val()+"> "
+		if($('#object').val().includes("http"))
+			tripleline+="<"+$('#object').val()+"> ."
+                else if($('#object').val().includes("^^")){
+                            tripleline+="\""+$('#object').val().substring(0,$('#object').val().indexOf('^^'))+"\""+$('#object').val().substring($('#object').val().indexOf('^^'))+" . ";
+		}else if($('#objuri').val()!=""){
+                            tripleline+="<"+$('#objuri').val()+"> . \n"
+                            tripleline+="<"+$('#objuri').val()+"> rdfs:label \""+$('#object').val()+"\"@en ."
+		}else
+			tripleline+="<http://stolpersteine.i3mainz.de/person#"+$('#object').val().trim().replace(" ","_")+"> ."
+		tripleline+=" \n"
+		collectRDF[globalcounter]=tripleline;
+		toadd="<li id=\"li-"+globalcounter+"\">"
+		if($('#subject').val().includes("http")){
+			toadd+="<a href=\""+$('#subject').val()+"\" target=\"_blank\">"+
+			($('#subject').val().includes("#")?$("#subject").val().substring($("#subject").val().indexOf('#')+1):$("#subject").val())+"</a>"
+		}else{
+			toadd+=$('#subject').val().trim().replace(" ","_");
+		}
+		toadd2=""
+		if($('#object').val().includes("http")){
+			toadd2+="<a href=\""+$('#object').val()+"\" target=\"_blank\">"+
+			($('#object').val().includes("#")?$("#object").val().substring($("#object").val().indexOf('#')+1):$("#object").val())+"</a>"
+		}else if($('#object').val().includes("^^")){
+                            toadd2+="<a href=\"http://www.w3.org/2001/XMLSchema#date\" target=\"_blank\">"
+                            toadd2+=$('#object').val().trim()+"</a>";
+		}else if($('#objuri').val()!=""){
+			toadd2+="<a href=\""+$('#objuri').val()+"\" target=\"_blank\">"
+			toadd2+=$('#object').val()+"</a>";
+		}else{
+			toadd2+="<a href=\"http://stolpersteine.i3mainz.de#"+$('#object').val().trim().replace(" ","_")+"\" target=\"_blank\">"
+			toadd2+=$('#object').val().trim().replace(" ","_")+"</a>";
+		}
+		$('#relations').append(toadd+" - <a href=\""+$("option:selected",$('#predicate')).val()+
+				"\" target=\"_blank\">"+$("option:selected",$('#predicate')).text()+
+				"</a> - "+toadd2+"&nbsp;&nbsp;&nbsp;<button onclick=\"removeEntry("+globalcounter+")\">Remove</button></li>")
+				//<a href=\""+$('#object').val()+"\" target=\"_blank\">"+$('#object').val()+"</a>"
+		globalcounter++;
+		$('#subject').val("")
+		$('#object').val("")
+		$('#objuri').val("")
+	}
+	
+}
+
+function findLastNonAlpha(input){
+	if(input.includes("^^")){
+		return input.length
+	}
+	for(i=input.length-2;i>0;i--){
+		if(!input.substring(i,i+1).match("[A-z0-9-,;.^]"))
+			return i+1;
+	}
+}
+
+function addTriple2(subject,predicate,object){
+	if(subject!="" && predicate!="" && object!=""){
+		tripleline=""
+	    if(subject.includes("http"))
+			tripleline+="<"+subject+"> "
+		else
+			tripleline+="<http://stolpersteine.i3mainz.de/person#"+subject+"> "
+		tripleline+="<"+predicate+"> "
+		if(object.includes("http"))
+			tripleline+="<"+object+"> "
+		else
+			tripleline+="<http://stolpersteine.i3mainz.de/person#"+object+"> "
+		tripleline+=" . \n"
+		collectRDF[globalcounter]=tripleline;
+		subatt=subject.substring(findLastNonAlpha(subject))
+		predatt=predicate.substring(findLastNonAlpha(predicate))
+		addit="<li id=\"li-"+globalcounter+"\"><a href=\""+subject+"\" target=\"_blank\">"+($('#'+subatt).length!=0?($('#'+subatt).text()):subatt)+"</a> - <a href=\""+predicate+"\" target=\"_blank\">"+($('#'+predatt).length!=0?($('#'+predatt).text()):predatt)+"</a> - "
+		objatt=""
+		if(!object.includes("^^") && object!=""){
+			objatt=object.substring(findLastNonAlpha(object))
+			addit+="<a href=\""+object+"\" target=\"_blank\">";
+			addit+=($('#'+objatt).length!=0 && $('#'+objatt).length!=1 ?($('#'+objatt).text()):objatt);
+		}else{
+			objatt=object
+			addit+="<a href=\""+objatt.substring(objatt.indexOf("^^")+2)+"\" target=\"_blank\">";
+			addit+=objatt.substring(0,objatt.indexOf("^^"))
+			
+		}
+		//alert(subatt+" - "+predatt+" - "+objatt)		
+		addit+="</a>&nbsp;&nbsp;&nbsp;<button onclick=\"removeEntry("+globalcounter+")\">Remove</button></li>"
+		$('#relations').append(addit)
+		globalcounter++;
+		//collectRDF+="wd:"+$('#subject').val()+" <"+$('#predicate').val()+"> wd:"+$('#object').val()+" . \n";
+		$('#subject').val("")
+		$('#object').val("")
+	}
+	
+}
+
+function removeEntry(i){
+	delete collectRDF[i]
+	$('#li-'+i).remove()
+}
+function readSingleFile(e) {
+	  var file = e.target.files[0];
+	  if (!file) {
+	    return;
+	  }
+	  var reader = new FileReader();
+	  reader.onload = function(e) {
+	    var contents = e.target.result;
+	    displayContents(contents);
+	  };
+	  reader.readAsText(file);
+	}
+function displayContents(contents) {
+	  var element = document.getElementById('relations');
+	  element.textContent = contents;
+	  $('#relations').html("")
+	  splitted=contents.replace("<","").replace(">","").split("\n")
+	  first=true
+	  collectRDF={}
+	  j=0;
+	  for(elem in splitted){
+		  if(splitted[elem].includes("@prefix")){
+				continue;
+		  }
+		  if(first || splitted[elem].includes("owl:Ontology")){
+			  collectRDF[j]="<http://stolpersteine.i3mainz.de> rdf:type owl:Ontology . \n";
+			  first=false;
+			  j+=1
+			  continue;
+		  }
+		  //alert(splitted[el)
+		  if(splitted[elem]!="" && !splitted[elem].includes("rdfs:label")){
+			collectRDF[j]=splitted[elem]+" \n";
+			//alert("Add "+j+" "+splitted[elem])
+			splitted2=splitted[elem].split(" ") //.replace("<"," - ").replace(">"," - ")
+			relation="<li id=\"li-"+j+"\">";
+			if(splitted2[0].includes("<") && splitted2[0].includes(">")){
+				reformatted=splitted2[0].replace("<","").replace(">","").trim()
+				relation+="<a target=\"_blank\" href=\""+reformatted+"\">"+reformatted.substring(findLastNonAlpha(reformatted))+"</a>"
+                                if(reformatted.startsWith("http://stolpersteine.i3mainz.de")){
+                                            personnames[reformatted.substring('#')]=reformatted
+                                            $('#personnames').html(getOptionString())    
+                                }
+			}else{
+				relation+=splitted2[0]
+			}		
+			reformatted=splitted2[1].replace("<","").replace(">","").trim();
+		  	relation+=" - <a target=\"_blank\" href=\""+reformatted+"\">"+$("#"+reformatted.substring(findLastNonAlpha(reformatted))).text()+"</a> - "
+			//alert("#"+reformatted.substring(findLastNonAlpha(reformatted))).text())
+			if(splitted2[2].includes("<") && splitted2[2].includes(">")){
+				reformatted=splitted2[2].replace("<","").replace(">","").trim()
+				label=""
+				nextindex=parseInt(elem)+1
+                                if(nextindex<splitted.length && splitted[nextindex].includes("rdfs:label")){
+                                        label=splitted[nextindex].substring(splitted[nextindex].indexOf("\"")+1,splitted[nextindex].lastIndexOf("\"")).trim()
+                                        collectRDF[j+1]=splitted[nextindex]+"\n"
+                                }
+				relation+="<a target=\"_blank\" href=\""+reformatted+"\">"+(label==""?reformatted.substring(findLastNonAlpha(reformatted)):label)+"</a>"
+			}else{
+				i=2;
+				relation+=splitted2[i]
+				while(splitted2.length>i+1){
+					i++;
+					relation+=" "+splitted2[i]
+				}
+			}
+			relation+="&nbsp;&nbsp;&nbsp;<button onclick=\"removeEntry("+j+")\">Remove</button></li>"
+			$('#relations').append(relation)
+		  }
+		  j+=1
+	  }
+	}
+function searchObjects(){
+	var availableTags = []
+$.get( "https://cors.io/?https://www.wikidata.org/w/api.php?action=wbsearchentities&language=en&search="+$('#object').
+		val()+"&type=item&limit=7&format=json", function( data ) {
+	  jsonobj=JSON.parse(data);
+	  collect=""
+	  for(obj in jsonobj["search"]){
+		  availableTags.push({"label":jsonobj["search"][obj]["label"]+" ("+jsonobj["search"][obj]["description"]+") "
+			  ,"value":"http:"+jsonobj["search"][obj]["url"]})
+		  collect+=jsonobj["search"][obj]["label"]+" ("+jsonobj["search"][obj]["description"]+") "+jsonobj["search"][obj]["url"]+"\n";
+	  }
+	    $( "#object" ).autocomplete({
+	        source: availableTags,
+	        select: function(event, ui) {
+	            if(ui.item){
+                                $('#object').val("");
+                                $('#object').val(ui.item.label);
+	          		$('#more2').attr("href",ui.item.value)	
+	          		$('#objuri').val(ui.item.value)	  
+                                event.preventDefault()
+	            }
+
+	        }
+	      });
+
+	});
+}
+function addBasicInformation(){
+	resname="http://i3mainz.de/stolpersteine/person#"+$('#familyname').val()+"_"+$('#firstname').val()+"_"+personcounter++
+	addTriple2(resname,"a", "http://www.wikidata.org/wiki/Q5")
+	addTriple2(resname,"http://www.wikidata.org/wiki/Property:P735",$('#firstname').val())
+	addTriple2(resname,"http://www.wikidata.org/wiki/Property:P734",$('#familyname').val())
+	addTriple2(resname,"http://www.wikidata.org/wiki/Property:P569",$('#dateofbirth').val()+"^^http://www.w3.org/2001/XMLSchema\#date")
+	addTriple2(resname,"http://www.wikidata.org/wiki/Property:P570",$('#dateofdeath').val()+"^^http://www.w3.org/2001/XMLSchema\#date")		
+	addTriple2(resname,"http://www.opengis.net/ont/geosparql#hasGeometry",resname+"_geom")
+	addTriple2(resname+"_geom","http://www.opengis.net/ont/geosparql#asWKT",$('#geocoordinate').val()+"^^http://www.opengis.net/ont/geosparql\#WKTLiteral")
+	$('#subject').text(resname);
+	$('#subject').val(resname);
+	$('#personuri').val(resname);
+}
+function addAddressData(subject){
+	resname="http://i3mainz.de/stolpersteine#"+subject+"_res_"+residencecounter++
+	addTriple2("http://i3mainz.de/stolpersteine#"+subject,"https://www.wikidata.org/wiki/Property:P551", resname)
+	addTriple2(resname,"a","https://www.wikidata.org/wiki/Q319608")
+	addTriple2(resname,"https://www.wikidata.org/wiki/Property:P527","https://www.wikidata.org/wiki/Q319608")
+	addTriple2(resname,"https://www.wikidata.org/wiki/Property:P551", resname)
+}
+</script>
+</head>
+<body>
+<h2 align="center">Stolpersteine Input Page</h2>
+
+<div class="ui-widget">
+<table width="100%" border=0 cellpadding=0 cellspacing=0><tr><th colspan="2">Basic Information</th><th colspan=3>Address input</th><th>Loading previously saved file...</th></tr>
+<tr><td>First Name:</td><td> <input type="text" id="firstname" name="firstname"/> 
+</td><td>Streetname:</td><td><input type="text" id="streetname" name="streetname"/></td><td>No:<input type="text" id="housenumber" name="housenumber"/></td>
+<td rowspan=5 align="right"><input type="file"  id="file-input" /><br/><br/>
+</td></tr><tr><td>Family Name:</td><td> <input type="text" id="familyname" name="familyname"/></td><td>Postcode:</td>
+<td><input type="text" id="postcode" name="postcode"/></td><td>City:<input type="text" id="housenumber" name="housenumber"/></td></tr>
+<tr><td>Geocoordinate of stone:</td><td> <input type="text" id="geocoordinate" name="geocoordinate"/></td><td>Country:</td><td><input type="text" id="housenumber" name="housenumber"/></td>
+<td>Geocoordinate: <input type="text" id="addrcoord" name="addrcoord"/></td></tr>
+<tr><td>Date of birth: </td><td><input type="date" id="dateofbirth" name="dateofbirth"/></td><td>From: </td><td><input type="date" id="from" name="from"/> </td><td>To: <input type="date" id="to"/></td></tr>
+<tr><td> Date of death: </td><td><input type="date" id="dateofdeath" name="dateofdeath"/></td></tr>
+<tr><td colspan="2"><button id="basicinfo" onclick="addBasicInformation()">Add basic information</button></td>
+<td colspan="2"><button id="addaddress" onclick="addAddressData()">Add residence address</button></td>
+<td colspan=2><input type="hidden" id="Q5" value="person" text="person"/>Person URI: <select id="personnames"></select>
+<button id="chooseperson" onclick="selectperson()">Select</button></td></tr></table><br/>
+<h3>Relation Input</h3>
+Person: <input type="text" id="subject"/>
+Relation:<select id="predicate">
+<option id="P512" value="http://www.wikidata.org/wiki/Property:P512">academic degree</option>
+<option id="P1416" value="http://www.wikidata.org/wiki/Property:P1416">affiliation</option>
+<option id="P69" value="http://www.wikidata.org/wiki/Property:P69">alma mater</option>
+<option id="P66" value="http://www.wikidata.org/wiki/Property:P66">ancestral home</option>
+<option id="P450" value="http://www.wikidata.org/wiki/Property:P450">astronaut mission</option>
+<option id="P166" value="http://www.wikidata.org/wiki/Property:P166">award received</option>
+<option id="P1350" value="http://www.wikidata.org/wiki/Property:P3150">birthday</option>
+<option id="P1477" value="http://www.wikidata.org/wiki/Property:P1477">birth name</option>
+<option id="P509" value="http://www.wikidata.org/wiki/Property:P509">cause of death</option>
+<option id="P40" value="http://www.wikidata.org/wiki/Property:P40">child</option>
+<option id="P237" value="http://www.wikidata.org/wiki/Property:P237">coat of arms</option>
+<option id="P1399" value="http://www.wikidata.org/wiki/Property:P1399">convicted of</option>
+<option id="P27" value="http://www.wikidata.org/wiki/Property:P27">country of citizenship</option>
+<option id="P569" value="http://www.wikidata.org/wiki/Property:P569">date of birth</option>
+<option id="P570" value="http://www.wikidata.org/wiki/Property:P570">date of death</option>
+<option id="depiction" value="http://xmlns.com/foaf/0.1/depiction">depiction</option>
+<option id="P184" value="http://www.wikidata.org/wiki/Property:P184">doctoral advisor</option>
+<option id="P185" value="http://www.wikidata.org/wiki/Property:P185">doctoral student</option>
+<option id="P551" value="http://www.wikidata.org/wiki/Property:P551">dwelling</option>
+<option id="P69" value="http://www.wikidata.org/wiki/Property:P69">educated at</option>
+<option id="P108" value="http://www.wikidata.org/wiki/Property:P108">employer</option>
+<option id="P582" value="http://www.wikidata.org/wiki/Property:P582">end time</option>
+<option id="P172" value="http://www.wikidata.org/wiki/Property:P172">ethnic group</option>
+<option id="P1340" value="http://www.wikidata.org/wiki/Property:P1340">eye color</option>
+<option id="P734" value="http://www.wikidata.org/wiki/Property:P734">family name</option>
+<option id="P22" value="http://www.wikidata.org/wiki/Property:P22">father</option>
+<option id="P101" value="http://www.wikidata.org/wiki/Property:P101">field of work</option>
+<option id="P103" value="http://www.wikidata.org/wiki/Property:P103">first language</option>
+<option id="P735" value="http://www.wikidata.org/wiki/Property:P735">given name</option>
+<option id="P1290" value="http://www.wikidata.org/wiki/Property:P1290">godparent</option>
+<option id="P119" value="http://www.wikidata.org/wiki/Property:P119">grave location</option>
+<option id="P1429" value="http://www.wikidata.org/wiki/Property:P1429">has pet</option>
+<option id="homepage" value="http://xmlns.com/foaf/0.1/homepage">homepage</option>
+<option id="P109" value="http://www.wikidata.org/wiki/Property:P109">image of persons signature</option>
+<option id="knows" value="http://xmlns.com/foaf/0.1/knows">knows</option>
+<option id="P1412" value="https://www.wikidata.org/wiki/Property:P1412">languages written, spoken or signed</option>
+<option id="P39" value="http://www.wikidata.org/wiki/Property:P39">mandate</option>
+<option id="P1196" value="http://www.wikidata.org/wiki/Property:P1196">manner of death</option>
+<option id="P463" value="http://www.wikidata.org/wiki/Property:P463">member of</option>
+<option id="P25" value="http://www.wikidata.org/wiki/Property:P25">mother</option>
+<option id="P157" value="http://www.wikidata.org/wiki/Property:P157">murderer</option>
+<option id="P1559" value="http://www.wikidata.org/wiki/Property:P1559">name of the person in their native language</option>
+<option id="P97" value="http://www.wikidata.org/wiki/Property:P97">noble title</option>
+<option id="P1411" value="http://www.wikidata.org/wiki/Property:P1411">nominated for</option>
+<option id="P1971" value="http://www.wikidata.org/wiki/Property:P1971">number of children</option>
+<option id="P263" value="http://www.wikidata.org/wiki/Property:P263">official residence</option>
+<option id="P106" value="http://www.wikidata.org/wiki/Property:P106">occupation</option>
+<option id="P1344" value="http://www.wikidata.org/wiki/Property:P1344">participant of</option>
+<option id="P451" value="http://www.wikidata.org/wiki/Property:P451">partner</option>
+<option id="P1442" value="http://www.wikidata.org/wiki/Property:P1442">picture of the grave</option>
+<option id="P19" value="http://www.wikidata.org/wiki/Property:P19">place of birth</option>
+<option id="P20" value="http://www.wikidata.org/wiki/Property:P20">place of death</option>
+<option id="P1303" value="http://www.wikidata.org/wiki/Property:P1303">plays instrument</option>
+<option id="P102" value="http://www.wikidata.org/wiki/Property:P102">political party</option>
+<option id="P742" value="http://www.wikidata.org/wiki/Property:P742">pseudonym</option>
+<option id="publications" value="http://xmlns.com/foaf/0.1/publications">publication</option>
+<option id="P1038" value="http://www.wikidata.org/wiki/Property:P1038">relative</option>
+<option id="P140" value="http://www.wikidata.org/wiki/Property:P140">religion</option>
+<option id="P551" value="http://www.wikidata.org/wiki/Property:P551">residence</option>
+<option id="P91" value="http://www.wikidata.org/wiki/Property:P91">sexual orientation</option>
+<option id="P21" value="http://www.wikidata.org/wiki/Property:P21">sex or gender</option>
+<option id="P3373" value="http://www.wikidata.org/wiki/Property:P3373">sibling</option>
+<option id="P26" value="http://www.wikidata.org/wiki/Property:P26">spouse</option>
+<option id="P580" value="http://www.wikidata.org/wiki/Property:P580">start time</option>
+<option id="P3448" value="http://www.wikidata.org/wiki/Property:P3448">stepparent</option>
+<option id="P1066" value="http://www.wikidata.org/wiki/Property:P1066">student of</option>
+<option id="P1066" value="http://www.wikidata.org/wiki/Property:P1066">teacher</option>
+<option id="P793" value="http://www.wikidata.org/wiki/Property:P793">witnessed significant event</option>
+<option id="P800" value="http://www.wikidata.org/wiki/Property:P800">work and magnum opus</option>
+<option id="P412" value="http://www.wikidata.org/wiki/Property:P412">voice type</option>
+<option id="P553" value="http://www.wikidata.org/wiki/Property:P553">website account on</option>
+
+</select><a href="#" id="more" target="_blank">???</a>
+  <label for="tags">To: </label>
+  <input id="object" onkeyup="searchObjects()"><input type="hidden" id="objuri"/><input type="hidden" id="dateres"/><a href="#" id="more2" target="_blank">???</a>
+  <button id="addtriple" onclick="addTriple()">Add relation</button>
+</div>
+<br/>
+<h3>Extracted relations from text:</h3>
+<ul id="relations" style="width: 90%; overflow: auto">
+</ul>
+<!--<textarea rows="25" cols="100" id="textArea"></textarea><br/>-->
+<button id="save" onclick="saveTextAsFile()">Export result to file</button>
+<input type="submit" value="Send to server" disabled/>
+
+</body>
+</html>
