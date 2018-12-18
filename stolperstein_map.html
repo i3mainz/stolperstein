@@ -18,7 +18,8 @@
 var prefixlist="@prefix owl: <http://www.w3.org/2002/07/owl#> .\n @prefix foaf: <http://xmlns.com/foaf/0.1/> .\n @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> . @prefix xml: <http://www.w3.org/XML/1998/namespace> . \n @prefix xsd: <http://www.w3.org/2001/XMLSchema#> . \n @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> . \n"
 var overlayMaps=[]
 var ttlExport="";
-
+var minMapZoom=12;
+var resultLayerCollection=[]
 function saveToOWL(){
     saveTextAsFile();
 }
@@ -42,11 +43,11 @@ function saveTextAsFile()
     
 }
 
-function buildOverpassApiUrl(map, overpassQuery) {
+function buildOverpassApiUrl(map, overpassQuery,overpassQueryVal) {
         var bounds = map.getBounds().getSouth() + ',' + map.getBounds().getWest() + ',' + map.getBounds().getNorth() + ',' + map.getBounds().getEast();
-        var nodeQuery = 'node[' + overpassQuery + '](' + bounds + ');';
-        var wayQuery = 'way[' + overpassQuery + '](' + bounds + ');';
-        var relationQuery = 'relation[' + overpassQuery + '](' + bounds + ');';
+        var nodeQuery = 'node[' + (overpassQueryVal==""?overpassQuery:"'"+overpassQuery+"'='"+overpassQueryVal+"'") + '](' + bounds + ');';
+        var wayQuery = 'way[' + (overpassQueryVal==""?overpassQuery:"'"+overpassQuery+"'='"+overpassQueryVal+"'") + '](' + bounds + ');';
+        var relationQuery = 'relation[' + (overpassQueryVal==""?overpassQuery:"'"+overpassQuery+"'='"+overpassQueryVal+"'") + '](' + bounds + ');';
         var query = '?data=[out:json][timeout:15];(' + nodeQuery + wayQuery + relationQuery + ');out geom;';
         var baseUrl = 'https://overpass-api.de/api/interpreter';
         var resultUrl = baseUrl + query;
@@ -54,8 +55,8 @@ function buildOverpassApiUrl(map, overpassQuery) {
 }
 
 function getOSMAttributesForCoordinate(map){
-if(map.getZoom()>=15){
-$.get(buildOverpassApiUrl(map,"memorial=stolperstein"), function (osmDataAsJson) {
+if(map.getZoom()>=minMapZoom){
+$.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmDataAsJson) {
           var resultAsGeojson = osmtogeojson(osmDataAsJson);
 		  var adminLayer=null
           var resultLayer = L.geoJson(resultAsGeojson, {
@@ -166,7 +167,9 @@ $.get(buildOverpassApiUrl(map,"memorial=stolperstein"), function (osmDataAsJson)
               });
               popupContent = popupContent + "</ul>"
 			  //alert(wdkeyset)
+			  if(feature.properties.tags["wikidata"]!== undefined){
               popupContent+="Wikidata Items: "/*<b>"+Object.values(wdkeyset["rdfs:label"])[0]+"</b>*/+"<ul>"
+			  }
               for(key in wdkeyset){
 					//if(key=="rdfs:label")
 					//	continue;
@@ -240,10 +243,22 @@ $.get(buildOverpassApiUrl(map,"memorial=stolperstein"), function (osmDataAsJson)
                         }
               }
               popupContent+="</ul>"
+			  if(feature.properties.tags["wikidata"]!== undefined){
+						var greyIcon = new L.Icon({
+                                        iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png',
+                                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                                        iconSize: [25, 41],
+                                        iconAnchor: [12, 41],
+                                        popupAnchor: [1, -34],
+                                        shadowSize: [41, 41]
+                                    });
+						layer.setIcon(greyIcon);
+			  }
               layer.bindPopup(popupContent,{maxWidth : 560});
              // console.log(ttlExport)
             }
           }).addTo(map);
+		  resultLayerCollection.push(resultLayer);
         });
     }
 }
@@ -269,6 +284,7 @@ function toRadian(degree) {
 
 	
 function wikidataAroundQuery(coord,width){
+if(map.getZoom()>=minMapZoom){
 var markers=[]
 var wikidatagroup=L.layerGroup().addTo(map)
 var query = [ "PREFIX bd: <http://www.bigdata.com/rdf#>\n",
@@ -348,7 +364,10 @@ var query = [ "PREFIX bd: <http://www.bigdata.com/rdf#>\n",
         }
     });  
     layercontrol.addBaseLayer(wikidatagroup, 'wikidata');
+	resultLayerCollection.push(wikidatagroup);
     return res;
+	}
+	return "";
 }
 
 function getAttributesForWikidataID(qid){
@@ -442,6 +461,37 @@ var queryUrl = "https://query.wikidata.org/sparql?query="+ encodeURIComponent(qu
     });
 }
 
+function clearMap() {
+	for(i in resultLayerCollection){
+		//if(resultLayerCollection[i]._path != undefined) {
+            try {
+                map.removeLayer(resultLayerCollection[i]);
+            }
+            catch(e) {
+                console.log("problem with " + e + map._layers[i]);
+            }
+        //}
+	}
+    /*for(i in map._layers) {
+        if(map._layers[i]._path != undefined) {
+            try {
+                map.removeLayer(map._layers[i]);
+            }
+            catch(e) {
+                console.log("problem with " + e + map._layers[i]);
+            }
+        }
+    }*/
+	/*for(marker in markercollection){
+		map.removeLayer(markercollection[marker])
+	}
+	markercollection=[]
+        for(decorator in decorators){
+		map.removeLayer(decorators[decorator])
+	}
+	decorators=[]*/
+}
+
 
 function loadItems(){
     getOSMAttributesForCoordinate(map);
@@ -478,7 +528,7 @@ var osmToWikidataMap={}
 getMatchingWikiDataOSMAttributes();
 		
     map.on('zoomend', function() {
-		if(map.getZoom()>=15){
+		if(map.getZoom()>=minMapZoom){
 			$('#mapid').css("border","5px solid green")
 		}else{
 			$('#mapid').css("border","5px solid black")
@@ -494,7 +544,7 @@ getMatchingWikiDataOSMAttributes();
 });*/
 
 	var layer = L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
-		maxZoom: 18,
+		maxZoom: 20,
 		attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
 			'<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
 			'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
@@ -518,9 +568,9 @@ var layercontrol=L.control.layers(baseMaps,overlayMaps).addTo(map);
 
 </script>
 </div>
-<button type="button" id="loadbutton" onClick="loadItems()">Load OSM Items with Wikidata</button>
-<button type="button" id="loadbutton2" onClick="loadWDItems()">Load Wikidata Items with Geocoordinate</button>
-<button type="button" id="saveOWLButton" onClick="saveToOWL()">Save OSM Items as OWL</button>
+<button type="button" id="loadbutton" onClick="loadItems()">Load OSM Stolperstein items</button>
+<button type="button" id="loadbutton2" onClick="loadWDItems()">Load Wikidata Stolperstein Items</button>
+<button type="button" id="clearbutton" onClick="clearMap()">Clear Map</button>
 </body>
 </html>
  
