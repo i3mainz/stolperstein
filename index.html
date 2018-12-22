@@ -8,6 +8,7 @@
 <script src="https://unpkg.com/osmtogeojson@2.2.12/osmtogeojson.js"></script>
   <script src="js/leaflet.polylinedecorator.js"></script>
   <script src="js/wicket.js" type="text/javascript"></script>
+  <script src='https://npmcdn.com/@turf/turf/turf.min.js'></script>
      <script src="js/leaflet.fullscreen.js"></script>
 	 <script src="js/leaflet-search.js"></script>
    <script src="js/leaflet_legend.js"></script>
@@ -255,6 +256,9 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
                                     });
 						layer.setIcon(greyIcon);
 			  }
+			  if(wdcoords!=""){
+				popupContent+="Distance: "+getDistance(feature.geometry,wdcoords).toFixed(2)+"m"
+			  }
               layer.bindPopup(popupContent,{maxWidth : 560});
              // console.log(ttlExport)
             }
@@ -265,22 +269,22 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 }
 
 function getDistance(origin, destination) {
-    // return distance in meters
-    var lon1 = toRadian(origin[1]),
-        lat1 = toRadian(origin[0]),
-        lon2 = toRadian(destination[1]),
-        lat2 = toRadian(destination[0]);
-
-    var deltaLat = lat2 - lat1;
-    var deltaLon = lon2 - lon1;
-
-    var a = Math.pow(Math.sin(deltaLat/2), 2) + Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin(deltaLon/2), 2);
-    var c = 2 * Math.asin(Math.sqrt(a));
-    var EARTH_RADIUS = 6371;
-    return c * EARTH_RADIUS * 1000;
-}
-function toRadian(degree) {
-    return degree*Math.PI/180;
+	var fromm;
+	if(origin.type=="Polygon"){
+		var polygon=turf.polygon(origin.coordinates)
+		fromm=turf.centroid(polygon);
+	}else{
+		fromm=turf.point(origin.coordinates);
+	}
+	if(destination["coordinate location"].includes("Polygon")){
+		var polygon=turf.polygon(destination["coordinate location"])
+		to=turf.centroid(polygon);
+	}else{
+		to=turf.point(JSON.parse(("["+destination["coordinate location"].substring(destination["coordinate location"].indexOf('(')+1,destination["coordinate location"].indexOf(')'))+"]").replace(" ",", ")));
+	}
+	var options={units: 'kilometers'}
+	var dest=turf.distance(fromm,to,options)*1000
+	return dest
 }
 
 	
