@@ -71,7 +71,8 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
             onEachFeature: function (feature, layer) {
               var popupContent = "";
               popupContent = popupContent + "<b>" + feature.properties.type + "/" + feature.properties.id + "</b><br/>";
-			  popupContent+="Coordinates: "+feature.geometry.type+"("+feature.geometry.coordinates[1]+","+feature.geometry.coordinates[0]+")"
+			  coord="Coordinates: "+feature.geometry.type+"("+feature.geometry.coordinates[0]+" "+feature.geometry.coordinates[1]+")"
+			  popupContent+=trimcoords(coord,90)
               var indid="<http://www.linkedgeodata.org/"+feature.properties.type+feature.properties.id+">";
               
               popupContent+="<br/>OSM Attributes:<ul>"
@@ -172,6 +173,7 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 			  if(feature.properties.tags["wikidata"]!== undefined){
               popupContent+="Wikidata Items: "/*<b>"+Object.values(wdkeyset["rdfs:label"])[0]+"</b>*/+"<ul>"
 			  }
+			  var wdcoords;
               for(key in wdkeyset){
 					//if(key=="rdfs:label")
 					//	continue;
@@ -257,8 +259,11 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 						layer.setIcon(greyIcon);
 			  }
 			  if(wdcoords!=""){
-				popupContent+="Distance: "+getDistance(feature.geometry,wdcoords).toFixed(2)+"m"
-			  }
+				dist=getDistance(feature.geometry,wdcoords)
+				if(dist!=""){
+					popupContent+="Distance: "+dist.toFixed(2)+"m"
+				}
+			  } 
               layer.bindPopup(popupContent,{maxWidth : 560});
              // console.log(ttlExport)
             }
@@ -268,7 +273,12 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
     }
 }
 
+function trimcoords(coords,length){
+	return coords.length > length ? coords.replace("undefined,","").substring(0, length - 3) + "...)" : coords;	
+}
+
 function getDistance(origin, destination) {
+	try{
 	var fromm;
 	if(origin.type=="Polygon"){
 		var polygon=turf.polygon(origin.coordinates)
@@ -285,6 +295,9 @@ function getDistance(origin, destination) {
 	var options={units: 'kilometers'}
 	var dest=turf.distance(fromm,to,options)*1000
 	return dest
+	}catch(e){
+		return "";
+	}
 }
 
 	
