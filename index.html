@@ -69,7 +69,8 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
             },
             onEachFeature: function (feature, layer) {
               var popupContent = "";
-              popupContent = popupContent + "<b>" + feature.properties.type + "/" + feature.properties.id + "</b>";
+              popupContent = popupContent + "<b>" + feature.properties.type + "/" + feature.properties.id + "</b><br/>";
+			  popupContent+="Coordinates: "+feature.geometry.type+"("+feature.geometry.coordinates[1]+","+feature.geometry.coordinates[0]+")"
               var indid="<http://www.linkedgeodata.org/"+feature.properties.type+feature.properties.id+">";
               
               popupContent+="<br/>OSM Attributes:<ul>"
