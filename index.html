@@ -155,6 +155,8 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 					}
                 }else{
                     popupContent+="<span style=\"color:black\">"+key+"</span>"
+				if(key.includes("P625"))
+					wdcoords=wdkeyset[key]
 			if(feature.properties.tags[key].includes(".jpg") || feature.properties.tags[key].includes(".JPG") || feature.properties.tags[key].includes(".svg") || feature.properties.tags[key].includes(".SVG")
 				|| feature.properties.tags[key].includes(".png") || feature.properties.tags[key].includes(".PNG") || feature.properties.tags[key].includes(".gif") || feature.properties.tags[key].includes(".GIF")){
 			    	popupContent+=" - <a href=\""+feature.properties.tags[key]+"\" target=\"_blank\"><img src=\""+feature.properties.tags[key].replace("http","https")+"\" height=\"30\" width=\"30\"></a></li>"			
