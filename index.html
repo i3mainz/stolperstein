@@ -142,7 +142,7 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 					}
 				}else if(key in osmToWikidataMap){
 						var color="orange"
-                        popupContent+="<a style=\"color:"+color+"\" href=\""+Object.keys(osmToWikidataMap[key])[0]+"\" target=\"_blank\">"+key+"</a>"
+                        popupContent+="<a style=\"color:"+color+"\" href=\"https://wiki.openstreetmap.org/wiki/Key:"+key+"\" target=\"_blank\">"+key+"</a>"
                                         if(feature.properties.tags[key].includes(".jpg") || feature.properties.tags[key].includes(".JPG") || feature.properties.tags[key].includes(".svg") || feature.properties.tags[key].includes(".SVG")
 						|| feature.properties.tags[key].includes(".png") || feature.properties.tags[key].includes(".PNG") || feature.properties.tags[key].includes(".gif") || feature.properties.tags[key].includes(".GIF")){
 						popupContent+=" - <a href=\""+feature.properties.tags[key]+"\" target=\"_blank\"><img src=\""+feature.properties.tags[key].replace("http","https")+"\" height=\"30\" width=\"30\"></a></li>"			
@@ -154,7 +154,7 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 						popupContent = popupContent + " - " + feature.properties.tags[key] + "</li>";
 					}
                 }else{
-                    popupContent+="<span style=\"color:black\">"+key+"</span>"
+                    popupContent+="<a href=\"https://wiki.openstreetmap.org/wiki/Key:"+key+"\" target=\"_blank\"style=\"color:black;text-decoration: none;\">"+key+"</a>"
 				if(key.includes("P625"))
 					wdcoords=wdkeyset[key]
 			if(feature.properties.tags[key].includes(".jpg") || feature.properties.tags[key].includes(".JPG") || feature.properties.tags[key].includes(".svg") || feature.properties.tags[key].includes(".SVG")
