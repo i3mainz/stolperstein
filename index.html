@@ -21,6 +21,7 @@ var overlayMaps=[]
 var ttlExport="";
 var minMapZoom=12;
 var resultLayerCollection=[]
+var loaded=false;
 function saveToOWL(){
     saveTextAsFile();
 }
@@ -533,7 +534,7 @@ function loadWDItems(){
 <script>
 var wikidataToOSMMap={}
 var osmToWikidataMap={}
-	var map = L.map('mapid',{fullscreenControl: true,fullscreenControlOptions: {position: 'topleft'}}).locate({setView: true, maxZoom: 22});//.setView([51.505, -0.09], 13);
+	var map = L.map('mapid',{fullscreenControl: true,fullscreenControlOptions: {position: 'topleft'}}).setView([49.993056, 8.241667], 16).locate({setView: true, maxZoom: 22});
 	map.addControl( new L.Control.Search({
 		url: 'http://nominatim.openstreetmap.org/search?format=json&q={s}',
 		jsonpParam: 'json_callback',
@@ -547,12 +548,16 @@ var osmToWikidataMap={}
         
 getMatchingWikiDataOSMAttributes();
 		
-    map.on('zoomend', function() {
+    map.on('moveend', function() {
 		if(map.getZoom()>=minMapZoom){
 			$('#mapid').css("border","5px solid green")
 		}else{
 			$('#mapid').css("border","5px solid black")
 		}
+            if(loaded){
+            clearMap();	
+            loadItems();
+        }
 	});
 /*map.on('moveend',function(){
         map.eachLayer(function (layer) {
@@ -560,7 +565,10 @@ getMatchingWikiDataOSMAttributes();
             map.removeLayer(layer);
             }catch{}
         });
-        loadWDItems();
+        if(loaded){
+            map.removeLayer(layer);		
+            loadItems();
+        }
 });*/
 
 	var layer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -582,7 +590,7 @@ attribution: '&copy; Bundesamt f&uuml;r Kartographie und Geod&auml;sie 2017, <a 
 	imperial: false
 }).addTo(map);
 var layercontrol=L.control.layers(baseMaps,overlayMaps).addTo(map);
-
+loaded=true;
 </script>
 </div>
 <button type="button" id="loadbutton" onClick="loadItems()">Load OSM Stolperstein items</button>
