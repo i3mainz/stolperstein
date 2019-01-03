@@ -523,7 +523,17 @@ function loadWDItems(){
         width=distance/2
 	wikidataAroundQuery(map.getCenter(),width);
 }
-
+function zoomAndReload(){
+		if(map.getZoom()>=minMapZoom){
+			$('#mapid').css("border","5px solid green")
+		}else{
+			$('#mapid').css("border","5px solid black")
+		}
+            if(loaded){
+            clearMap();	
+            loadItems();
+        }
+}
 </script>
 
 </head>
@@ -548,16 +558,11 @@ var osmToWikidataMap={}
         
 getMatchingWikiDataOSMAttributes();
 		
-    map.on('moveend', function() {
-		if(map.getZoom()>=minMapZoom){
-			$('#mapid').css("border","5px solid green")
-		}else{
-			$('#mapid').css("border","5px solid black")
-		}
-            if(loaded){
-            clearMap();	
-            loadItems();
-        }
+    map.on('dragend', function() {
+        zoomAndReload();
+	});
+	    map.on('zoomend', function() {
+        zoomAndReload();
 	});
 /*map.on('moveend',function(){
         map.eachLayer(function (layer) {
