@@ -544,7 +544,7 @@ function zoomAndReload(){
 <script>
 var wikidataToOSMMap={}
 var osmToWikidataMap={}
-	var map = L.map('mapid',{fullscreenControl: true,fullscreenControlOptions: {position: 'topleft'}}).setView([49.993056, 8.241667], 16).locate({setView: true, maxZoom: 22});
+	var map = L.map('mapid',{fullscreenControl: true,fullscreenControlOptions: {position: 'topleft'}}).setView([49.998889, 8.274167], 16).locate({setView: true, maxZoom: 22});
 	map.addControl( new L.Control.Search({
 		url: 'http://nominatim.openstreetmap.org/search?format=json&q={s}',
 		jsonpParam: 'json_callback',
@@ -596,6 +596,7 @@ attribution: '&copy; Bundesamt f&uuml;r Kartographie und Geod&auml;sie 2017, <a 
 }).addTo(map);
 var layercontrol=L.control.layers(baseMaps,overlayMaps).addTo(map);
 loaded=true;
+zoomAndReload();
 </script>
 </div>
 <button type="button" id="loadbutton" onClick="loadItems()">Load OSM Stolperstein items</button>
