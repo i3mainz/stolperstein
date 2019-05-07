@@ -669,6 +669,18 @@ onEachFeature: function (feature, layer) {
      }})
 	
 	overlayMaps.push(officiallayer);
+	
+	var officiallayer2=L.geoJSON(stolpersteine2,{
+onEachFeature: function (feature, layer) {
+	 var popup="Official Data Point<br/><ul>"
+	 for(prop in feature.properties){
+	 	popup+="<li>"+prop+" - "+feature.properties[prop]+"</li>"
+	 }
+	 popup+="</ul>"
+         layer.bindPopup(popup);
+     }})
+	
+	overlayMaps.push(officiallayer2);
 		var wmsLayer = L.tileLayer.wms('https://sgx.geodatenzentrum.de/wms_topplus_web_open', {
 layers: 'web',
 format: 'image/png',
