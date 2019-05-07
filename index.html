@@ -82,8 +82,10 @@ function matchGeometryInGeoJSONSet(geometry,geojsonset,compareatt,osmprop){
 		if(turf.booleanContains(point,geojsonset[geojson])){
 			lastmatched=geojsonset[geojson]
 			console.log(osmprop)
-			console.log(geojsonset[geojson]["properties"])
-			if(typeof osmprop !== 'undefined' && osmprop.toLowerCase().includes(geojsonset[geojson]["properties"]["Name"].toLowerCase())){
+			console.log(geojsonset[geojson]["properties"]["Name"])
+			if(typeof osmprop !== 'undefined' 
+			   && (osmprop.toLowerCase().includes(geojsonset[geojson]["properties"]["Name"].toLowerCase()) || 
+			      geojsonset[geojson]["properties"]["Name"].toLowerCase().includes(osmprop.toLowerCase())){
 			console.log("Result: "+geojsonset[geojson])
 			return geojsonset[geojson];				
 			}
