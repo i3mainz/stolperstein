@@ -69,7 +69,8 @@ function matchGeometryInGeoJSONSet(geometry,geojsonset){
 	}else if(geometry.type=="MultiLineString"){
 		return null;
 	}else if(geometry.type=="Point"){
-		var point=turf.point(geometry.coordinates);
+		var pointt=turf.point(geometry.coordinates);
+		var point = turf.buffer(pointt, 30, {units: 'meters'});
 	}else if(geometry.type=="MultiPoint"){
 		return null;
 	}
