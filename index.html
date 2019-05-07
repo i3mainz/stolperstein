@@ -654,7 +654,11 @@ getMatchingWikiDataOSMAttributes();
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 });
 
-var officiallayer=L.geoJSON(stolpersteine);
+var officiallayer=L.geoJSON(stolpersteine,{
+onEachFeature: function (feature, layer) {
+         layer.bindPopup(feature.properties.name);
+     }})
+	
 	overlayMaps.push(officiallayer);
 		var wmsLayer = L.tileLayer.wms('https://sgx.geodatenzentrum.de/wms_topplus_web_open', {
 layers: 'web',
