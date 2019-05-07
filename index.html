@@ -83,7 +83,7 @@ function matchGeometryInGeoJSONSet(geometry,geojsonset,compareatt,osmprop){
 			lastmatched=geojsonset[geojson]
 			console.log(osmprop)
 			console.log(geojsonset[geojson]["properties"])
-			if(typeof osmprop !== 'undefined' && osmprop.toLowerCase().contains(geojsonset[geojson]["properties"]["Name"].toLowerCase())){
+			if(typeof osmprop !== 'undefined' && osmprop.toLowerCase().includes(geojsonset[geojson]["properties"]["Name"].toLowerCase())){
 			console.log("Result: "+geojsonset[geojson])
 			return geojsonset[geojson];				
 			}
