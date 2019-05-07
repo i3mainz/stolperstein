@@ -99,7 +99,7 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
             },
             onEachFeature: function (feature, layer) {
               var popupContent = "";
-              var officialdata=matchGeometryInGeoJSONSet(feature.geometry,stolpersteine)
+              var officialdata=matchGeometryInGeoJSONSet(feature.geometry,stolpersteine.features)
 			  console.log(JSON.stringify(officialdata))
               popupContent = popupContent + "<b>" + feature.properties.type + "/" + feature.properties.id + "</b><br/>";
 			  coord="Coordinates: "+feature.geometry.type+"("+feature.geometry.coordinates[0]+" "+feature.geometry.coordinates[1]+")"
