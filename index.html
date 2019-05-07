@@ -656,7 +656,12 @@ getMatchingWikiDataOSMAttributes();
 
 var officiallayer=L.geoJSON(stolpersteine,{
 onEachFeature: function (feature, layer) {
-         layer.bindPopup(feature.properties.name);
+	 var popup="Official Data Point<br/><ul>"
+	 for(prop in feature.properties){
+	 	popup+="<li>"+prop+" - "+feature.properties[prop]+"</li>"
+	 }
+	 popup+="</ul>"
+         layer.bindPopup(popup);
      }})
 	
 	overlayMaps.push(officiallayer);
