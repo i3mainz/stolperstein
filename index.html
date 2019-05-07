@@ -58,7 +58,7 @@ function buildOverpassApiUrl(map, overpassQuery,overpassQueryVal) {
         return resultUrl;
 }
 
-function matchGeometryInGeoJSONSet(geometry,geojsonset){
+function matchGeometryInGeoJSONSet(geometry,geojsonset,compareatt,osmprop){
 	console.log(geometry)
 	if(geometry.type=="Polygon"){
 		var point=turf.polygon(geometry.coordinates);
@@ -77,13 +77,17 @@ function matchGeometryInGeoJSONSet(geometry,geojsonset){
 	}
     console.log(point)
 	var result=null
+	var lastmatched=null
 	for(geojson in geojsonset){
 		if(turf.booleanContains(point,geojsonset[geojson])){
+			lastmatched=geojsonset[geojson]
+			if(osmprop.toLowerCase().contains(geojsonset[geojson]["properties"]["Name"].toLowerCase())){
 			console.log("Result: "+geojsonset[geojson])
-			return geojsonset[geojson];
+			return geojsonset[geojson];				
+			}
 		}
 	}
-	return null;
+	return lastmatched;
 }
 
 function getOSMAttributesForCoordinate(map){
@@ -106,7 +110,7 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
               if(feature.properties.tags["wikidata"]!="" && feature.properties.tags["wikidata"]!=undefined){
                     wdkeyset=getAttributesForWikidataID(feature.properties.tags["wikidata"])
              }
-              var officialdata=matchGeometryInGeoJSONSet(feature.geometry,stolpersteine.features)
+              var officialdata=matchGeometryInGeoJSONSet(feature.geometry,stolpersteine.features,"Name",feature.properties["name"])
 			  console.log(JSON.stringify(officialdata))
               popupContent = popupContent + "<b>" + feature.properties.type + "/" + feature.properties.id + "</b><br/>";
 			  coord="Coordinates: "+feature.geometry.type+"("+feature.geometry.coordinates[0]+" "+feature.geometry.coordinates[1]+")"
