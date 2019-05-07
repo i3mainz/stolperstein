@@ -69,7 +69,9 @@ function matchGeometryInGeoJSONSet(geometry,geojsonset){
 	}else if(geometry.type=="MultiLineString"){
 		return null;
 	}else if(geometry.type=="Point"){
-		var point=turf.point(geometry.coordinates);
+		var pointt=turf.point(geometry.coordinates);
+		var point = turf.buffer(pointt, 50, {units: 'meters'});
+		console.log(point)
 	}else if(geometry.type=="MultiPoint"){
 		return null;
 	}
@@ -99,7 +101,12 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
             },
             onEachFeature: function (feature, layer) {
               var popupContent = "";
-              var officialdata=matchGeometryInGeoJSONSet(feature.geometry,stolpersteine)
+		    	  wdkeyset={}
+              console.log("Wikidata: "+feature.properties.tags["wikidata"])
+              if(feature.properties.tags["wikidata"]!="" && feature.properties.tags["wikidata"]!=undefined){
+                    wdkeyset=getAttributesForWikidataID(feature.properties.tags["wikidata"])
+             }
+              var officialdata=matchGeometryInGeoJSONSet(feature.geometry,stolpersteine.features)
 			  console.log(JSON.stringify(officialdata))
               popupContent = popupContent + "<b>" + feature.properties.type + "/" + feature.properties.id + "</b><br/>";
 			  coord="Coordinates: "+feature.geometry.type+"("+feature.geometry.coordinates[0]+" "+feature.geometry.coordinates[1]+")"
@@ -142,11 +149,6 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 			  }
 			  console.log(popupContent)
               popupContent+="<br/>OSM Attributes:<ul>"
-              wdkeyset={}
-              console.log("Wikidata: "+feature.properties.tags["wikidata"])
-              if(feature.properties.tags["wikidata"]!="" && feature.properties.tags["wikidata"]!=undefined){
-                    wdkeyset=getAttributesForWikidataID(feature.properties.tags["wikidata"])
-             }
               var keys = Object.keys(feature.properties.tags);
               if(feature.properties.tags.length>0){
 					var wicket = new Wkt.Wkt();
