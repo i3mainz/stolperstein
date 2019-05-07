@@ -101,6 +101,11 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
             },
             onEachFeature: function (feature, layer) {
               var popupContent = "";
+		    	  wdkeyset={}
+              console.log("Wikidata: "+feature.properties.tags["wikidata"])
+              if(feature.properties.tags["wikidata"]!="" && feature.properties.tags["wikidata"]!=undefined){
+                    wdkeyset=getAttributesForWikidataID(feature.properties.tags["wikidata"])
+             }
               var officialdata=matchGeometryInGeoJSONSet(feature.geometry,stolpersteine.features)
 			  console.log(JSON.stringify(officialdata))
               popupContent = popupContent + "<b>" + feature.properties.type + "/" + feature.properties.id + "</b><br/>";
@@ -144,11 +149,6 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 			  }
 			  console.log(popupContent)
               popupContent+="<br/>OSM Attributes:<ul>"
-              wdkeyset={}
-              console.log("Wikidata: "+feature.properties.tags["wikidata"])
-              if(feature.properties.tags["wikidata"]!="" && feature.properties.tags["wikidata"]!=undefined){
-                    wdkeyset=getAttributesForWikidataID(feature.properties.tags["wikidata"])
-             }
               var keys = Object.keys(feature.properties.tags);
               if(feature.properties.tags.length>0){
 					var wicket = new Wkt.Wkt();
