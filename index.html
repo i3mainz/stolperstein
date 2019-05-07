@@ -70,7 +70,8 @@ function matchGeometryInGeoJSONSet(geometry,geojsonset){
 		return null;
 	}else if(geometry.type=="Point"){
 		var pointt=turf.point(geometry.coordinates);
-		var point = turf.buffer(pointt, 30, {units: 'meters'});
+		var point = turf.buffer(pointt, 50, {units: 'meters'});
+		console.log(point)
 	}else if(geometry.type=="MultiPoint"){
 		return null;
 	}
