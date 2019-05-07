@@ -112,7 +112,7 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
               if(feature.properties.tags["wikidata"]!="" && feature.properties.tags["wikidata"]!=undefined){
                     wdkeyset=getAttributesForWikidataID(feature.properties.tags["wikidata"])
              }
-              var officialdata=matchGeometryInGeoJSONSet(feature.geometry,stolpersteine.features,"Name",feature.properties["name"])
+              var officialdata=matchGeometryInGeoJSONSet(feature.geometry,stolpersteine.features,"Name",feature.properties.tags["name"])
 			  console.log(JSON.stringify(officialdata))
               popupContent = popupContent + "<b>" + feature.properties.type + "/" + feature.properties.id + "</b><br/>";
 			  coord="Coordinates: "+feature.geometry.type+"("+feature.geometry.coordinates[0]+" "+feature.geometry.coordinates[1]+")"
