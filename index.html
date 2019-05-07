@@ -12,6 +12,8 @@
      <script src="js/leaflet.fullscreen.js"></script>
 	 <script src="js/leaflet-search.js"></script>
    <script src="js/leaflet_legend.js"></script>
+   <script src="testdata/stolpersteinemainz.js"></script>
+	  <script src="testdata/stolpersteine_mapping.js"></script>
       <script src="js/leaflet_easyprint.js"></script>
   <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
   
@@ -56,6 +58,32 @@ function buildOverpassApiUrl(map, overpassQuery,overpassQueryVal) {
         return resultUrl;
 }
 
+function matchGeometryInGeoJSONSet(geometry,geojsonset){
+	console.log(geometry)
+	if(geometry.type=="Polygon"){
+		var point=turf.polygon(geometry.coordinates);
+	}else if(geometry.type=="MultiPolygon"){
+		return null;
+	}else if(geometry.type=="LineString"){
+		var point=turf.lineString(geometry.coordinates);
+	}else if(geometry.type=="MultiLineString"){
+		return null;
+	}else if(geometry.type=="Point"){
+		var point=turf.point(geometry.coordinates);
+	}else if(geometry.type=="MultiPoint"){
+		return null;
+	}
+    console.log(point)
+	var result=null
+	for(geojson in geojsonset){
+		if(turf.booleanContains(point,geojsonset[geojson])){
+			console.log("Result: "+geojsonset[geojson])
+			return geojsonset[geojson];
+		}
+	}
+	return null;
+}
+
 function getOSMAttributesForCoordinate(map){
 if(map.getZoom()>=minMapZoom){
 $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmDataAsJson) {
@@ -71,11 +99,48 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
             },
             onEachFeature: function (feature, layer) {
               var popupContent = "";
+              var officialdata=matchGeometryInGeoJSONSet(feature.geometry,brbschools)
+			  console.log(JSON.stringify(officialdata))
               popupContent = popupContent + "<b>" + feature.properties.type + "/" + feature.properties.id + "</b><br/>";
 			  coord="Coordinates: "+feature.geometry.type+"("+feature.geometry.coordinates[0]+" "+feature.geometry.coordinates[1]+")"
 			  popupContent+=trimcoords(coord,90)
               var indid="<http://www.linkedgeodata.org/"+feature.properties.type+feature.properties.id+">";
-              
+              if(officialdata!=null){
+				if(officialdata["properties"]!=null){
+					popupContent+="<br/>Official Data Attributes:<ul>"
+					var keys = Object.keys(officialdata["properties"]).sort();
+					for(prop in keys){
+						console.log(keys[prop])
+						console.log(officialdata.properties[keys[prop]])
+						if(keys[prop] in equivs){	
+							console.log(equivs[keys[prop]]["osm"])						
+							console.log(feature.properties.tags[equivs[keys[prop]]["osm"]])
+							osmkey=equivs[keys[prop]]["osm"]
+							wdkey=equivs[keys[prop]]["wikidata"]
+							valtocompare=feature.properties.tags[osmkey]
+							wdvaltocompare=wdkeyset[equivs[keys[prop]]["wikidata"]]
+							console.log(osmkey+" - "+wdkey+" - "+valtocompare+" - "+wdvaltocompare+" - "+officialdata.properties[keys[prop]])
+							console.log(osmkey+" - "+feature.properties.tags[osmkey])
+							if(osmkey in feature.properties.tags && officialdata.properties[keys[prop]]!=valtocompare){
+								popupContent+="<li><span style=\"color:orange;text-decoration:underline;\">"+keys[prop]+"</span> - <span style=\"color:orange;text-decoration:underline;\">"+officialdata.properties[keys[prop]]+" | "+feature.properties.tags[osmkey]+" (OSM)</span></li>"
+							}else if(osmkey in feature.properties.tags && officialdata.properties[keys[prop]]==valtocompare){
+								popupContent+="<li><span style=\"color:green;text-decoration:underline;\">"+keys[prop]+"</span> - <span style=\"color:green;text-decoration:underline;\">"+officialdata.properties[keys[prop]]+" (OSM)</span></li>"
+							}else if(wdkey in wdkeyset && officialdata.properties[keys[prop]]!=wdvaltocompare){
+								popupContent+="<li><span style=\"color:green;text-decoration:underline;\">"+keys[prop]+"</span> - <span style=\"color:orange;text-decoration:underline;\">"+officialdata.properties[keys[prop]]+" | "+wdkeyset[wdkey]+" (Wikidata)</span></li>"
+							}else if(wdkey in wdkeyset && officialdata.properties[keys[prop]]==wdvaltocompare){
+								popupContent+="<li><span style=\"color:green;text-decoration:underline;\">"+keys[prop]+"</span> - <span style=\"color:green;text-decoration:underline;\">"+officialdata.properties[keys[prop]]+" (Wikidata)</span></li>"
+							}else{
+								popupContent+="<li><span style=\"color:orange;text-decoration:underline;\">"+keys[prop]+"</span> - <span>"+officialdata.properties[keys[prop]]+"</span></li>"
+							}
+					}else{
+							popupContent+="<li><span>"+keys[prop]+"</span> - "+officialdata.properties[keys[prop]]+"</li>"
+						}
+						
+					}
+					popupContent+="</ul>"
+				}
+			  }
+			  console.log(popupContent)
               popupContent+="<br/>OSM Attributes:<ul>"
               wdkeyset={}
               console.log("Wikidata: "+feature.properties.tags["wikidata"])
@@ -580,6 +645,9 @@ getMatchingWikiDataOSMAttributes();
 	var layer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 });
+
+var officiallayer=L.geoJSON(stolpersteine);
+	overlayMaps.push(officiallayer);
 		var wmsLayer = L.tileLayer.wms('https://sgx.geodatenzentrum.de/wms_topplus_web_open', {
 layers: 'web',
 format: 'image/png',
