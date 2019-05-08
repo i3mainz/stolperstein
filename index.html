@@ -80,6 +80,7 @@ function matchGeometryInGeoJSONSet(geometry,geojsonset,compareatt,osmprop){
 	var result=null
 	var lastmatched=null
 	for(geojson in geojsonset){
+		console.log(geojsonset[geojson])
 		if(geojsonset[geojson]!=null){
 		if(turf.booleanContains(point,geojsonset[geojson])){
 			lastmatched=geojsonset[geojson]
