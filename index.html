@@ -627,7 +627,7 @@ var wikidataToOSMMap={}
 var osmToWikidataMap={}
 	var map = L.map('mapid',{fullscreenControl: true,fullscreenControlOptions: {position: 'topleft'}}).setView([49.998889, 8.274167], 16).locate({setView: true, maxZoom: 22});
 	map.addControl( new L.Control.Search({
-		url: 'http://nominatim.openstreetmap.org/search?format=json&q={s}',
+		url: 'https://nominatim.openstreetmap.org/search?format=json&q={s}',
 		jsonpParam: 'json_callback',
 		propertyName: 'display_name',
 		propertyLoc: ['lat','lon'],
