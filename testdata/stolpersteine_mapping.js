@@ -6,5 +6,5 @@ var equivs={
 	"Leben":{"osm":"","wikidata":"http://www.w3.org/2000/01/rdf-schema#comment"},
 	"Anmerkung":{"osm":"","wikidata":"http://www.w3.org/2000/01/rdf-schema#comment"},
   "Gestiftet von":{"osm":"","wikidata":"http://www.wikidata.org/prop/direct/P1028"},
-  "Verlegedatum":{"osm":"","wikidata":"http://www.wikidata.org/prop/direct/P571"}
+  "Verlegedatum":{"osm":"start_date","wikidata":"http://www.wikidata.org/prop/direct/P571"}
 }
