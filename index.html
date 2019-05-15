@@ -44,9 +44,27 @@ function saveTextAsFile()
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);  
     }, 1000);
-    
-    
+   
 }
+
+function saveTextAsFile2(text)
+{
+    var blob = new Blob([JSON.stringify(text)], {type:'text/geojson'});
+    var filename = "res.geojson";
+    var a = document.createElement('a');
+    a.style = "display: none";  
+    var url = window.URL.createObjectURL(blob);
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+        a.click();
+    setTimeout(function(){
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);  
+    }, 1000);
+   
+}
+
 
 function buildOverpassApiUrl(map, overpassQuery,overpassQueryVal) {
         var bounds = map.getBounds().getSouth() + ',' + map.getBounds().getWest() + ',' + map.getBounds().getNorth() + ',' + map.getBounds().getEast();
@@ -80,8 +98,6 @@ function matchGeometryInGeoJSONSet(geometry,geojsonset,compareatt,osmprop){
 	var result=null
 	var lastmatched=null
 	for(geojson in geojsonset){
-		console.log(geojsonset[geojson])
-		if(geojsonset[geojson]["geometry"]!=null){
 		if(turf.booleanContains(point,geojsonset[geojson])){
 			lastmatched=geojsonset[geojson]
 			console.log(osmprop)
@@ -93,15 +109,29 @@ function matchGeometryInGeoJSONSet(geometry,geojsonset,compareatt,osmprop){
 			return geojsonset[geojson];				
 			}
 		}
-		}
 	}
 	return lastmatched;
 }
 
+var osmDataGeoJSON={}
+var wdDataGeoJSON={}
+
+function exportOSM(){
+    saveTextAsFile2(osmDataGeoJSON)
+}
+
+function exportWD(){
+    saveTextAsFile2(wdDataGeoJSON)
+}
+
 function getOSMAttributesForCoordinate(map){
+var counter=0;
 if(map.getZoom()>=minMapZoom){
 $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmDataAsJson) {
           var resultAsGeojson = osmtogeojson(osmDataAsJson);
+          osmDataGeoJSON=resultAsGeojson
+          wdDataGeoJSON={}
+          wdDataGeoJSON["features"]={}
 		  var adminLayer=null
           var resultLayer = L.geoJson(resultAsGeojson, {
             style: function (feature) {
@@ -118,7 +148,11 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
               if(feature.properties.tags["wikidata"]!="" && feature.properties.tags["wikidata"]!=undefined){
                     wdkeyset=getAttributesForWikidataID(feature.properties.tags["wikidata"])
              }
-              var officialdata=matchGeometryInGeoJSONSet(feature.geometry,window[$('#officialsetmenu').val()].features,"Name",feature.properties.tags["name"])
+             console.log(wdDataGeoJSON)
+             wdDataGeoJSON["features"][counter]=JSON.parse(JSON.stringify(feature));
+             wdDataGeoJSON["features"][counter]["properties"]=wdkeyset
+            counter+=1
+            var officialdata=matchGeometryInGeoJSONSet(feature.geometry,window[$('#officialsetmenu').val()].features,"Name",feature.properties.tags["name"])
 			  console.log(JSON.stringify(officialdata))
               popupContent = popupContent + "<b>" + feature.properties.type + "/" + feature.properties.id + "</b><br/>";
 			  coord="Coordinates: "+feature.geometry.type+"("+feature.geometry.coordinates[0]+" "+feature.geometry.coordinates[1]+")"
@@ -340,12 +374,12 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
                                     });
 						layer.setIcon(greyIcon);
 			  }
-			  if(wdcoords!=""){
-				dist=getDistance(feature.geometry,wdcoords)
+			  //if(officialdata["geometry"]!=""){
+				dist=getDistance(feature.geometry,officialdata["geometry"])
 				if(dist!=""){
 					popupContent+="Distance: "+dist.toFixed(2)+"m"
 				}
-			  } 
+			  //} 
               layer.bindPopup(popupContent,{maxWidth : 560});
              // console.log(ttlExport)
             }
@@ -360,6 +394,8 @@ function trimcoords(coords,length){
 }
 
 function getDistance(origin, destination) {
+    console.log("Distance: "+JSON.stringify(origin))
+    console.log("Distance2: "+JSON.stringify(destination))
 	try{
 	var fromm;
 	if(origin.type=="Polygon"){
@@ -368,16 +404,17 @@ function getDistance(origin, destination) {
 	}else{
 		fromm=turf.point(origin.coordinates);
 	}
-	if(destination["coordinate location"].includes("Polygon")){
+	if("coordinate location" in destination && destination["coordinate location"].includes("Polygon")){
 		var polygon=turf.polygon(destination["coordinate location"])
 		to=turf.centroid(polygon);
 	}else{
-		to=turf.point(JSON.parse(("["+destination["coordinate location"].substring(destination["coordinate location"].indexOf('(')+1,destination["coordinate location"].indexOf(')'))+"]").replace(" ",", ")));
+		to=turf.point(destination["coordinates"]);
 	}
 	var options={units: 'kilometers'}
 	var dest=turf.distance(fromm,to,options)*1000
 	return dest
 	}catch(e){
+	    console.log(e)
 		return "";
 	}
 }
@@ -627,7 +664,7 @@ var wikidataToOSMMap={}
 var osmToWikidataMap={}
 	var map = L.map('mapid',{fullscreenControl: true,fullscreenControlOptions: {position: 'topleft'}}).setView([49.998889, 8.274167], 16).locate({setView: true, maxZoom: 22});
 	map.addControl( new L.Control.Search({
-		url: 'https://nominatim.openstreetmap.org/search?format=json&q={s}',
+		url: 'http://nominatim.openstreetmap.org/search?format=json&q={s}',
 		jsonpParam: 'json_callback',
 		propertyName: 'display_name',
 		propertyLoc: ['lat','lon'],
@@ -672,18 +709,6 @@ onEachFeature: function (feature, layer) {
      }})
 	
 	overlayMaps.push(officiallayer);
-	
-	var officiallayer2=L.geoJSON(stolpersteine2,{
-onEachFeature: function (feature, layer) {
-	 var popup="Official Data Point<br/><ul>"
-	 for(prop in feature.properties){
-	 	popup+="<li>"+prop+" - "+feature.properties[prop]+"</li>"
-	 }
-	 popup+="</ul>"
-         layer.bindPopup(popup);
-     }})
-	
-	overlayMaps.push(officiallayer2);
 		var wmsLayer = L.tileLayer.wms('https://sgx.geodatenzentrum.de/wms_topplus_web_open', {
 layers: 'web',
 format: 'image/png',
@@ -701,19 +726,19 @@ attribution: '&copy; Bundesamt f&uuml;r Kartographie und Geod&auml;sie 2017, <a 
 }).addTo(map);
 var layercontrol=L.control.layers(baseMaps,overlayMaps).addTo(map);
 loaded=true;
-//zoomAndReload();
+zoomAndReload();
 </script>
 </div>
 <!--<button type="button" id="loadbutton" onClick="loadItems()">Load OSM Stolperstein items</button>
 <button type="button" id="loadbutton2" onClick="loadWDItems()">Load Wikidata Stolperstein Items</button>
 <button type="button" id="clearbutton" onClick="clearMap()">Clear Map</button><br/>-->
-<table><tr><td>	Autoload<input type="checkbox" id="autoload"/><br/>
-<select id="officialsetmenu"><option value="stolpersteine2">Stolpersteine Aschaffenburg</option><option value="stolpersteine" selected="selected">Stolpersteine Mainz</option></select></td><td>
+Autoload<input type="checkbox" id="autoload"/><br/>
+<select id="officialsetmenu"><option value="stolpersteine2">Stolpersteine Aschaffenburg</option><option value="stolpersteine" selected="selected">Stolpersteine Mainz</option></select>
 <a href="stolperstein_editor.html" target="_blank">Stolperstein Editor</a><br>
-<a href="mapview.html" target="_blank">Mapview for modelled Stolpersteine (using the Editor)</a></td></tr></table>
+<a href="mapview.html" target="_blank">Mapview for modelled Stolpersteine (using the Editor)</a><br/>
+<button id="exportOSM" onClick="exportOSM()">Export OSM as GeoJSON</button>
+<button id="exportWD" onClick="exportWD()">Export Wikidata as GeoJSON</button><br/>
 Legend: <table><tr>
 <td style="color:gray">Grey Marker</td><td>In Wikidata and OSM</td></tr><tr><td style="color:blue">Blue Marker</td><td>In OSM and not in Wikidata</td></tr><!--<tr><td style="color:green">Green Marker</td><td>In Wikidata and not in OSM</td></tr>--></table>
 </body>
 </html>
- 
- 
