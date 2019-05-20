@@ -374,12 +374,12 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
                                     });
 						layer.setIcon(greyIcon);
 			  }
-			  //if(officialdata["geometry"]!=""){
+			  if(officialdata!=null && "geometry" in officialdata){
 				dist=getDistance(feature.geometry,officialdata["geometry"])
 				if(dist!=""){
 					popupContent+="Distance: "+dist.toFixed(2)+"m"
 				}
-			  //} 
+			  } 
               layer.bindPopup(popupContent,{maxWidth : 560});
              // console.log(ttlExport)
             }
@@ -664,7 +664,7 @@ var wikidataToOSMMap={}
 var osmToWikidataMap={}
 	var map = L.map('mapid',{fullscreenControl: true,fullscreenControlOptions: {position: 'topleft'}}).setView([49.998889, 8.274167], 16).locate({setView: true, maxZoom: 22});
 	map.addControl( new L.Control.Search({
-		url: 'http://nominatim.openstreetmap.org/search?format=json&q={s}',
+		url: 'https://nominatim.openstreetmap.org/search?format=json&q={s}',
 		jsonpParam: 'json_callback',
 		propertyName: 'display_name',
 		propertyLoc: ['lat','lon'],
@@ -713,7 +713,7 @@ onEachFeature: function (feature, layer) {
 layers: 'web',
 format: 'image/png',
  transparent: true,
-attribution: '&copy; Bundesamt f&uuml;r Kartographie und Geod&auml;sie 2017, <a href="http://sg.geodatenzentrum.de/web_public/Datenquellen_TopPlus_Open.pdf">Datenquellen</a>'
+attribution: '&copy; Bundesamt f&uuml;r Kartographie und Geod&auml;sie 2017, <a href="https://sg.geodatenzentrum.de/web_public/Datenquellen_TopPlus_Open.pdf">Datenquellen</a>'
 });
 	var baseMaps = {
 		"BKG": wmsLayer,
