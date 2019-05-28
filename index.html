@@ -13,6 +13,7 @@
 	 <script src="js/leaflet-search.js"></script>
    <script src="js/leaflet_legend.js"></script>
    <script src="testdata/stolpersteinemainz.js"></script>
+   <script src="testdata/stolpersteinewiesbaden.js"></script>
    <script src="testdata/stolpersteineaschaffenburg.js"></script>
    <script src="testdata/stolpersteine_mapping.js"></script>
       <script src="js/leaflet_easyprint.js"></script>
@@ -733,7 +734,11 @@ zoomAndReload();
 <button type="button" id="loadbutton2" onClick="loadWDItems()">Load Wikidata Stolperstein Items</button>
 <button type="button" id="clearbutton" onClick="clearMap()">Clear Map</button><br/>-->
 Autoload<input type="checkbox" id="autoload"/><br/>
-<select id="officialsetmenu"><option value="stolpersteine2">Stolpersteine Aschaffenburg</option><option value="stolpersteine" selected="selected">Stolpersteine Mainz</option></select>
+<select id="officialsetmenu">
+	<option value="stolpersteine2">Stolpersteine Aschaffenburg</option>
+	<option value="stolpersteine" selected="selected">Stolpersteine Mainz</option>
+	<option value="stolpersteinewiesbaden" selected="selected">Stolpersteine Wiesbaden</option>
+	</select>
 <a href="stolperstein_editor.html" target="_blank">Stolperstein Editor</a><br>
 <a href="mapview.html" target="_blank">Mapview for modelled Stolpersteine (using the Editor)</a><br/>
 <button id="exportOSM" onClick="exportOSM()">Export OSM as GeoJSON</button>
