@@ -25,6 +25,7 @@ var overlayMaps={}
 var ttlExport="";
 var minMapZoom=12;
 var resultLayerCollection=[]
+var combinedCounter=0
 var loaded=false;
 function saveToOWL(){
     saveTextAsFile();
@@ -65,6 +66,40 @@ function saveTextAsFile2(text)
     }, 1000);
    
 }
+
+function editDistance(a, b){
+  if(a.length == 0) return b.length; 
+  if(b.length == 0) return a.length; 
+
+  var matrix = [];
+
+  // increment along the first column of each row
+  var i;
+  for(i = 0; i <= b.length; i++){
+    matrix[i] = [i];
+  }
+
+  // increment each column in the first row
+  var j;
+  for(j = 0; j <= a.length; j++){
+    matrix[0][j] = j;
+  }
+
+  // Fill in the rest of the matrix
+  for(i = 1; i <= b.length; i++){
+    for(j = 1; j <= a.length; j++){
+      if(b.charAt(i-1) == a.charAt(j-1)){
+        matrix[i][j] = matrix[i-1][j-1];
+      } else {
+        matrix[i][j] = Math.min(matrix[i-1][j-1] + 1, // substitution
+                                Math.min(matrix[i][j-1] + 1, // insertion
+                                         matrix[i-1][j] + 1)); // deletion
+      }
+    }
+  }
+
+  return matrix[b.length][a.length];
+};
 
 
 function buildOverpassApiUrl(map, overpassQuery,overpassQueryVal) {
@@ -116,6 +151,8 @@ function matchGeometryInGeoJSONSet(geometry,geojsonset,compareatt,osmprop){
 
 var osmDataGeoJSON={}
 var wdDataGeoJSON={}
+var combinedDataGeoJSON={}
+var tagToValues={}
 
 function exportOSM(){
     saveTextAsFile2(osmDataGeoJSON)
@@ -124,6 +161,12 @@ function exportOSM(){
 function exportWD(){
     saveTextAsFile2(wdDataGeoJSON)
 }
+
+function exportCombined(){
+    saveTextAsFile2(tagToValues)
+}
+
+
 
 function getOSMAttributesForCoordinate(map){
 var counter=0;
@@ -143,12 +186,15 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
               return true;
             },
             onEachFeature: function (feature, layer) {
+              combinedDataGeoJSON=[]
               var popupContent = "";
 		    	  wdkeyset={}
               console.log("Wikidata: "+feature.properties.tags["wikidata"])
               if(feature.properties.tags["wikidata"]!="" && feature.properties.tags["wikidata"]!=undefined){
                     wdkeyset=getAttributesForWikidataID(feature.properties.tags["wikidata"])
              }
+             combinedDataGeoJSON[combinedCounter]={}
+             combinedDataGeoJSON[combinedCounter]={"wikidata":wdDataGeoJSON,"osm":""}             
              console.log(wdDataGeoJSON)
              wdDataGeoJSON["features"][counter]=JSON.parse(JSON.stringify(feature));
              wdDataGeoJSON["features"][counter]["properties"]=wdkeyset
@@ -176,13 +222,44 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 							console.log(osmkey+" - "+wdkey+" - "+valtocompare+" - "+wdvaltocompare+" - "+officialdata.properties[keys[prop]])
 							console.log(osmkey+" - "+feature.properties.tags[osmkey])
 							if(osmkey in feature.properties.tags && officialdata.properties[keys[prop]]!=valtocompare){
-								popupContent+="<li><span style=\"color:orange;text-decoration:underline;\">"+keys[prop]+"</span> - <span style=\"color:orange;text-decoration:underline;\">"+officialdata.properties[keys[prop]]+" | "+feature.properties.tags[osmkey]+" (OSM)</span></li>"
+								popupContent+="<li><span style=\"color:orange;text-decoration:underline;\">"+keys[prop]+"</span> - <span style=\"color:orange;text-decoration:underline;\">"+officialdata.properties[keys[prop]]+" | "+feature.properties.tags[osmkey];
+								if(officialdata.properties[keys[prop]]!=null && feature.properties.tags[osmkey]!=null){
+                                    popupContent+=" ["+editDistance(officialdata.properties[keys[prop]],feature.properties.tags[osmkey])+"]"
+								}
+								popupContent+=" (OSM)</span></li>"
+								console.log(tagToValues)
+								console.log(keys[prop])
+								if(!(keys[prop] in tagToValues)){
+                                    tagToValues[keys[prop]]={}
+								}
+								if(!(officialdata.properties[keys[prop]] in tagToValues[keys[prop]])){
+                                    tagToValues[keys[prop]][officialdata.properties[keys[prop]]]={}
+								}
+								if(officialdata.properties[keys[prop]]!=null && feature.properties.tags[osmkey]!=null){
+                                    distance=editDistance(officialdata.properties[keys[prop]].toLowerCase(),feature.properties.tags[osmkey].toLowerCase())
+                                    substring=feature.properties.tags[osmkey].toLowerCase().includes(officialdata.properties[keys[prop]].toLowerCase())
+								}else{
+                                    distance=""
+                                    substring=false
+								}
+								tagToValues[keys[prop]][officialdata.properties[keys[prop]]]["osm"]={"key":osmkey,"value":feature.properties.tags[osmkey],"distance":distance,"substring":substring}
+                                console.log(JSON.stringify(tagToValues))
+								console.log(keys[prop])
 							}else if(osmkey in feature.properties.tags && officialdata.properties[keys[prop]]==valtocompare){
 								popupContent+="<li><span style=\"color:green;text-decoration:underline;\">"+keys[prop]+"</span> - <span style=\"color:green;text-decoration:underline;\">"+officialdata.properties[keys[prop]]+" (OSM)</span></li>"
 							}else if(wdkey in wdkeyset && officialdata.properties[keys[prop]]!=wdvaltocompare){
-								popupContent+="<li><span style=\"color:green;text-decoration:underline;\">"+keys[prop]+"</span> - <span style=\"color:orange;text-decoration:underline;\">"+officialdata.properties[keys[prop]]+" | "+wdkeyset[wdkey]+" (Wikidata)</span></li>"
+								popupContent+="<li><span style=\"color:green;text-decoration:underline;\">"+keys[prop]+"</span> - <span style=\"color:orange;text-decoration:underline;\">"+officialdata.properties[keys[prop]]+" | "+wdkeyset[wdkey]+" ["+editDistance(officialdata.properties[keys[prop]],wdkey)+"] (Wikidata)</span></li>"
+                                if(!(keys[prop] in tagToValues)){
+                                    tagToValues[keys[prop]]={}
+								}
+								if(!(officialdata.properties[keys[prop]] in tagToValues[keys[prop]])){
+                                    tagToValues[keys[prop]][officialdata.properties[keys[prop]]]={}
+								}
+								tagToValues[keys[prop]][officialdata.properties[keys[prop]]]["wikidata"]={"key":wdkey,"value":wdkeyset[wdkey],"distance":editDistance(officialdata.properties[keys[prop]].toLowerCase(),wdkeyset[wdkey].toLowerCase()),"substring":wdkeyset[wdkey].toLowerCase().includes(officialdata.properties[keys[prop]].toLowerCase())}
 							}else if(wdkey in wdkeyset && officialdata.properties[keys[prop]]==wdvaltocompare){
 								popupContent+="<li><span style=\"color:green;text-decoration:underline;\">"+keys[prop]+"</span> - <span style=\"color:green;text-decoration:underline;\">"+officialdata.properties[keys[prop]]+" (Wikidata)</span></li>"
+                                console.log(tagToValues)
+								console.log(keys[prop])
 							}else{
 								popupContent+="<li><span style=\"color:orange;text-decoration:underline;\">"+keys[prop]+"</span> - <span>"+officialdata.properties[keys[prop]]+"</span></li>"
 							}
@@ -337,7 +414,7 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 					if((finished && giventag==spl[1]) || isgreen){
 						popupContent+="<a href=\""+spl[0]+"\" target=\"_blank\" style=\"color:green\">"+spl[1]+"</a></li>"
 					}else if(finished && giventag!=spl[1] && giventag!=""){
-						popupContent+="<a href=\""+spl[0]+"\" target=\"_blank\" style=\"color:orange\">"+spl[1]+"</a> | "+(giventag.includes("http")?"<a href=\""+giventag+"\" style=\"color:orange\">"+giventag+"</a>":"<span style=\"color:orange\">"+giventag+"</span>")+"</li>"
+						popupContent+="<a href=\""+spl[0]+"\" target=\"_blank\" style=\"color:orange\">"+spl[1]+"</a> | "+(giventag.includes("http")?"<a href=\""+giventag+"\" style=\"color:orange\">"+giventag+"["+editDistance(giventag,spl[1])+"]</a>":"<span style=\"color:orange\">"+giventag+" ["+editDistance(giventag,spl[1])+"]</span>")+"</li>"
 					}else{
 						popupContent+="<a href=\""+spl[0]+"\" target=\"_blank\">"+spl[1]+"</a></li>"
 					}	
@@ -346,7 +423,7 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 					if((finished && giventag==spl[1]) || isgreen){
 						popupContent+="<a href=\"https://"+spl[0]+"\" target=\"_blank\" style=\"color:green\">"+spl[1]+"</a></li>"
 					}else if(finished && giventag!=spl[1] && giventag!=""){
-						popupContent+="<a href=\"https://"+spl[0]+"\" target=\"_blank\" style=\"color:orange\">"+spl[1]+"</a> | "+(giventag.includes("http")?"<a href=\""+giventag+"\" style=\"color:orange\">"+giventag+"</a>":"<span style=\"color:orange\">"+giventag+"</span>")+"</li>"
+						popupContent+="<a href=\"https://"+spl[0]+"\" target=\"_blank\" style=\"color:orange\">"+spl[1]+"</a> | "+(giventag.includes("http")?"<a href=\""+giventag+"\" style=\"color:orange\">"+giventag+" ["+editDistance(giventag,spl[1])+"]</a>":"<span style=\"color:orange\">"+giventag+" ["+editDistance(giventag,spl[1])+"]</span>")+"</li>"
 					}else{
 						popupContent+="<a href=\"https://"+spl[0]+"\" target=\"_blank\">"+spl[1]+"</a></li>"
 					}		
@@ -355,7 +432,7 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 					if((finished && giventag==spl[1]) || isgreen){
 						popupContent+="<span style=\"color:green\">"+spl[1]+"</span></li>"
 					}else if(finished && giventag!=spl[1] && giventag!=""){
-						popupContent+="<span style=\"color:orange\">"+spl[1]+" | "+giventag+"</span></li>"
+						popupContent+="<span style=\"color:orange\">"+spl[1]+" | "+giventag+" ["+editDistance(giventag,spl[1])+"]</span></li>"
 					}else{
 						popupContent+=spl[1]+"</li>"
 					}
@@ -764,6 +841,7 @@ Autoload<input type="checkbox" id="autoload"/><br/>
 <a href="mapview.html" target="_blank">Mapview for modelled Stolpersteine (using the Editor)</a><br/>
 <button id="exportOSM" onClick="exportOSM()">Export OSM as GeoJSON</button>
 <button id="exportWD" onClick="exportWD()">Export Wikidata as GeoJSON</button><br/>
+<button id="exportCombined" onClick="exportCombined()">Export String Distance Comparison as JSON</button><br/>
 Legend: <table><tr>
 <td style="color:gray">Grey Marker</td><td>In Wikidata and OSM</td></tr><tr><td style="color:blue">Blue Marker</td><td>In OSM and not in Wikidata</td></tr><!--<tr><td style="color:green">Green Marker</td><td>In Wikidata and not in OSM</td></tr>--></table>
 </body>
