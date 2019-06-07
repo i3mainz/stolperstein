@@ -135,6 +135,7 @@ function matchGeometryInGeoJSONSet(geometry,geojsonset,compareatt,osmprop){
 	var result=null
 	var lastmatched=null
 	for(geojson in geojsonset){
+		try{
 		if(turf.booleanContains(point,geojsonset[geojson])){
 			lastmatched=geojsonset[geojson]
 			console.log(osmprop)
@@ -145,6 +146,9 @@ function matchGeometryInGeoJSONSet(geometry,geojsonset,compareatt,osmprop){
 			console.log("Result: "+geojsonset[geojson])
 			return geojsonset[geojson];				
 			}
+		}
+		}catch(err) {
+  			
 		}
 	}
 	return lastmatched;
