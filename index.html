@@ -72,6 +72,8 @@ function editDistance(a, b){
   if(b.length == 0) return a.length; 
   a=a.toLowerCase()
   b=b.toLowerCase()
+  a=a.replace("\n"," ")
+  b=b.replace("\n"," ")
   var matrix = [];
 
   // increment along the first column of each row
