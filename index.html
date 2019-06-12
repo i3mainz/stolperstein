@@ -467,6 +467,7 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
                                         popupAnchor: [1, -34],
                                         shadowSize: [41, 41]
                                     });
+				layer.setIcon(greenIcon);
 			  }
 			  if(officialdata!=null && "geometry" in officialdata){
 				dist=getDistance(feature.geometry,officialdata["geometry"])
