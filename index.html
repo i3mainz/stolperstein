@@ -466,7 +466,7 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
                                     });
 			  if(feature.properties.tags["wikidata"]!== undefined){
 						
-						layer.setIcon(greenIcon);
+						layer.setIcon(greyIcon);
 			  }else if(!("wikidata" in feature.properties.tags)){
 
 				layer.setIcon(greenIcon);
