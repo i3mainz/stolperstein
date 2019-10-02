@@ -452,8 +452,7 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
                         }
               }
               popupContent+="</ul>"
-			  if(feature.properties.tags["wikidata"]!== undefined){
-						var greyIcon = new L.Icon({
+		    var greyIcon = new L.Icon({
                                         iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png',
                                         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
                                         iconSize: [25, 41],
@@ -461,7 +460,20 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
                                         popupAnchor: [1, -34],
                                         shadowSize: [41, 41]
                                     });
+		    var greenIcon = new L.Icon({
+                                        iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+                                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                                        iconSize: [25, 41],
+                                        iconAnchor: [12, 41],
+                                        popupAnchor: [1, -34],
+                                        shadowSize: [41, 41]
+                                    });
+			  if(feature.properties.tags["wikidata"]!== undefined){
+						
 						layer.setIcon(greyIcon);
+			  }else if(!("wikidata" in feature.properties.tags)){
+
+				layer.setIcon(greenIcon);
 			  }
 			  if(officialdata!=null && "geometry" in officialdata){
 				dist=getDistance(feature.geometry,officialdata["geometry"])
@@ -848,7 +860,6 @@ loaded=true;
 zoomAndReload();
 </script>
 </div>
-</div>
     <div class="left col-sm-3" id="contentdesc" style="height:500px;overflow-y: scroll;">
 	</div>
 	</div>
@@ -867,6 +878,9 @@ Autoload<input type="checkbox" id="autoload"/>PopupMode<input type="checkbox" id
 <button id="exportWD" onClick="exportWD()">Export Wikidata as GeoJSON</button><br/>
 <button id="exportCombined" onClick="exportCombined()">Export String Distance Comparison as JSON</button><br/>
 Legend: <table><tr>
-<td style="color:gray">Grey Marker</td><td>In Wikidata and OSM</td></tr><tr><td style="color:blue">Blue Marker</td><td>In OSM and not in Wikidata</td></tr><!--<tr><td style="color:green">Green Marker</td><td>In Wikidata and not in OSM</td></tr>--></table>
+<td style="color:gray">Grey Marker</td><td>In Wikidata and OSM</td></tr>
+<tr><td style="color:orange">Orange Marker</td><td>In OSM and not in Wikidata</td></tr>
+<tr><td style="color:blue">Blue Marker</td><td>Reference Data</td></tr>
+<!--<tr><td style="color:green">Green Marker</td><td>In Wikidata and not in OSM</td></tr>--></table>
 </body>
 </html>
