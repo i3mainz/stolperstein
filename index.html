@@ -71,6 +71,47 @@ function saveTextAsFile2(text)
    
 }
 
+function filterItems(filtermode,featureid){
+	var itemsToFilter = document.querySelectorAll("#osm_"+featureid+" li");
+	doFiltering(itemsToFilter,filtermode)
+	var itemsToFilter = document.querySelectorAll("#wd_"+featureid+" li");
+	doFiltering(itemsToFilter,filtermode)
+	var itemsToFilter = document.querySelectorAll("#official_"+featureid+" li");
+	doFiltering(itemsToFilter,filtermode)
+}
+
+function doFiltering(itemsToFilter,filtermode){
+	for(item in itemsToFilter){
+		switch(filtermode){
+			case "all": itemsToFilter[item].style="";
+			break;
+			case "comp": if(itemsToFilter[item].className=="nomatch"){
+				itemsToFilter[item].style=""
+			}else{
+				itemsToFilter[item].style="display:none";
+			}
+			break;
+			case "conflict": if(itemsToFilter[item].className=="osmconflict" || itemsToFilter[item].className=="wdconflict"){
+				itemsToFilter[item].style=""
+			}else{
+				itemsToFilter[item].style="display:none";
+			}
+			break;
+			case "equiv": if(itemsToFilter[item].className=="equivfound"){
+				itemsToFilter[item].style=""
+			}else{
+				itemsToFilter[item].style="display:none";
+			}break;
+			case "match":if(itemsToFilter[item].className=="osmmatch" || itemsToFilter[item].className=="wdmatch"){
+				itemsToFilter[item].style=""
+			}else{
+				itemsToFilter[item].style="display:none";
+			}
+			break;
+		}
+	}
+}
+
 function editDistance(a, b){
   if(a.length == 0) return b.length; 
   if(b.length == 0) return a.length; 
@@ -198,8 +239,9 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
             },
             onEachFeature: function (feature, layer) {
               combinedDataGeoJSON=[]
-              var popupContent = "";
-		    	  wdkeyset={}
+			var popupContent = "<fieldset><input type=\"radio\" id=\"matching\" name=\"filtermode\" value=\"matching\" onclick=\"filterItems('match',"+feature.properties.id+")\"><label for=\"matching\">Match</label><input type=\"radio\" id=\"conflicting\" name=\"filtermode\" value=\"conflicting\" onclick=\"filterItems('conflict',"+feature.properties.id+")\"><label for=\"conflicting\">Conf</label><input type=\"radio\" id=\"complementary\" name=\"filtermode\" value=\"complementary\" onclick=\"filterItems('comp',"+feature.properties.id+")\"><label for=\"complementary\">Comp</label>"
+			  +"<input type=\"radio\" id=\"equiv\" name=\"filtermode\" value=\"equiv\" onclick=\"filterItems('equiv',"+feature.properties.id+")\"><label for=\"equiv\">EQ</label><input type=\"radio\" id=\"all\" checked=\"checked\" name=\"filtermode\" value=\"all\" onclick=\"filterItems('all',"+feature.properties.id+")\"><label for=\"all\">All</label></fieldset>";
+			wdkeyset={}
               console.log("Wikidata: "+feature.properties.tags["wikidata"])
               if(feature.properties.tags["wikidata"]!="" && feature.properties.tags["wikidata"]!=undefined){
                     wdkeyset=getAttributesForWikidataID(feature.properties.tags["wikidata"])
@@ -214,12 +256,12 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 			  console.log(JSON.stringify(officialdata))
               popupContent = popupContent + "<b>" + feature.properties.type + "/" + feature.properties.id + "</b><br/>";
 			  coord="Coordinates: "+feature.geometry.type+"("+feature.geometry.coordinates[0]+" "+feature.geometry.coordinates[1]+")"
-			  popupContent+=trimcoords(coord,90)
+			  popupContent+=trimcoords(coord,90)+"<br/>"
               var indid="<http://www.linkedgeodata.org/"+feature.properties.type+feature.properties.id+">";
               if(officialdata!=null){
 				if(officialdata["properties"]!=null){
-					popupContent+="<br/>Official Data Attributes:<ul>"
 					var keys = Object.keys(officialdata["properties"]).sort();
+					popupContent+="<b>Official Data Attributes: </b><a href=\"#\" onclick=\"toggle_visibility('official_"+feature.properties.id+"')\">["+keys.length+"]</a><br/><ul id=\"official_"+feature.properties.id+"\" style=\"display:none\">"		
 					for(prop in keys){
 						console.log(keys[prop])
 						console.log(officialdata.properties[keys[prop]])
@@ -233,7 +275,7 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 							console.log(osmkey+" - "+wdkey+" - "+valtocompare+" - "+wdvaltocompare+" - "+officialdata.properties[keys[prop]])
 							console.log(osmkey+" - "+feature.properties.tags[osmkey])
 							if(osmkey in feature.properties.tags && officialdata.properties[keys[prop]]!=valtocompare){
-								popupContent+="<li><span style=\"color:orange;text-decoration:underline;\">"+keys[prop]+"</span> - <span style=\"color:orange;text-decoration:underline;\">"+officialdata.properties[keys[prop]]+" | "+feature.properties.tags[osmkey];
+								popupContent+="<li link=\""+osmkey+"\" class=\"osmconflict\"><span style=\"color:orange;text-decoration:underline;\">"+keys[prop]+"</span> - <span style=\"color:orange;text-decoration:underline;\">"+officialdata.properties[keys[prop]]+" | "+feature.properties.tags[osmkey];
 								if(officialdata.properties[keys[prop]]!=null && feature.properties.tags[osmkey]!=null){
                                     popupContent+=" ["+editDistance(officialdata.properties[keys[prop]],feature.properties.tags[osmkey])+"]"
 								}
@@ -257,9 +299,9 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
                                 console.log(JSON.stringify(tagToValues))
 								console.log(keys[prop])
 							}else if(osmkey in feature.properties.tags && officialdata.properties[keys[prop]]==valtocompare){
-								popupContent+="<li><span style=\"color:green;text-decoration:underline;\">"+keys[prop]+"</span> - <span style=\"color:green;text-decoration:underline;\">"+officialdata.properties[keys[prop]]+" (OSM)</span></li>"
+								popupContent+="<li link=\""+osmkey+"\" class=\"osmmatch\"><span style=\"color:green;text-decoration:underline;\">"+keys[prop]+"</span> - <span style=\"color:green;text-decoration:underline;\">"+officialdata.properties[keys[prop]]+" (OSM)</span></li>"
 							}else if(wdkey in wdkeyset && officialdata.properties[keys[prop]]!=wdvaltocompare){
-								popupContent+="<li><span style=\"color:green;text-decoration:underline;\">"+keys[prop]+"</span> - <span style=\"color:orange;text-decoration:underline;\">"+officialdata.properties[keys[prop]]+" | "+wdkeyset[wdkey]+" ["+editDistance(officialdata.properties[keys[prop]],wdkey)+"] (Wikidata)</span></li>"
+								popupContent+="<li link=\""+wdkey+"\" class=\"wdconflict\"><span style=\"color:green;text-decoration:underline;\">"+keys[prop]+"</span> - <span style=\"color:orange;text-decoration:underline;\">"+officialdata.properties[keys[prop]]+" | "+wdkeyset[wdkey]+" ["+editDistance(officialdata.properties[keys[prop]],wdkey)+"] (Wikidata)</span></li>"
                                 if(!(keys[prop] in tagToValues)){
                                     tagToValues[keys[prop]]={}
 								}
@@ -268,14 +310,14 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 								}
 								tagToValues[keys[prop]][officialdata.properties[keys[prop]]]["wikidata"]={"key":wdkey,"value":wdkeyset[wdkey],"distance":editDistance(officialdata.properties[keys[prop]].toLowerCase(),wdkeyset[wdkey].toLowerCase()),"substring":wdkeyset[wdkey].toLowerCase().includes(officialdata.properties[keys[prop]].toLowerCase())}
 							}else if(wdkey in wdkeyset && officialdata.properties[keys[prop]]==wdvaltocompare){
-								popupContent+="<li><span style=\"color:green;text-decoration:underline;\">"+keys[prop]+"</span> - <span style=\"color:green;text-decoration:underline;\">"+officialdata.properties[keys[prop]]+" (Wikidata)</span></li>"
+								popupContent+="<li link=\""+wdkey+"\" class=\"wdmatch\"><span style=\"color:green;text-decoration:underline;\">"+keys[prop]+"</span> - <span style=\"color:green;text-decoration:underline;\">"+officialdata.properties[keys[prop]]+" (Wikidata)</span></li>"
                                 console.log(tagToValues)
 								console.log(keys[prop])
 							}else{
-								popupContent+="<li><span style=\"color:orange;text-decoration:underline;\">"+keys[prop]+"</span> - <span>"+officialdata.properties[keys[prop]]+"</span></li>"
+								popupContent+="<li class=\"equivfound\"><span style=\"color:orange;text-decoration:underline;\">"+keys[prop]+"</span> - <span>"+officialdata.properties[keys[prop]]+"</span></li>"
 							}
 					}else{
-							popupContent+="<li><span>"+keys[prop]+"</span> - "+officialdata.properties[keys[prop]]+"</li>"
+							popupContent+="<li link=\""+keys[prop]+"\" class=\"nomatch\"><span>"+keys[prop]+"</span> - "+officialdata.properties[keys[prop]]+"</li>"
 						}
 						
 					}
@@ -283,8 +325,8 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 				}
 			  }
 			  console.log(popupContent)
-              popupContent+="<br/>OSM Attributes:<ul>"
-              var keys = Object.keys(feature.properties.tags);
+			 var keys = Object.keys(feature.properties.tags);
+              popupContent+="<b>OSM Attributes: </b><a href=\"#\" onclick=\"toggle_visibility('osm_"+feature.properties.id+"')\">["+keys.length+"]</a><br/><ul id=\"osm_"+feature.properties.id+"\">"
               if(feature.properties.tags.length>0){
 					var wicket = new Wkt.Wkt();
 					wicket.read(JSON.stringify(feature["geometry"]));
@@ -302,88 +344,122 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 						ttlExport+="<http://www.linkedgeodata.org/"+feature.properties.type+feature.properties.id+"> <http://www.opengis.net/ont/geosparql#hasGeometry> \""+wkt+"\"^^<http://www.opengis.net/ont/geosparql#wktLiteral> .\n";
 					}
               }
-              keys.forEach(function (key) {
+                            keys.forEach(function (key) {
               var ignorekeys=[]
-                popupContent = popupContent + "<li>"
+			  	listElem="<li>"
+				listElemContent=""
+                //popupContent = popupContent
                                 /*alert(JSON.stringify(wdkeyset))
                                 if(key in osmToWikidataMap)
                                     alert(JSON.stringify(Object.keys(Object.values(osmToWikidataMap[key])[0])[0]))*/
 				if(key=="wikidata"){
-					popupContent = popupContent + "<a href=\"https://wiki.openstreetmap.org/wiki/Key:wikidata\" target=\"_blank\" style=\"color:#ff0000\">wikidata</a> - <a href=\"https://www.wikidata.org/entity/"+feature.properties.tags[key]+"\"  target=\"_blank\" style=\"color:#ff0000\">" + feature.properties.tags[key] + "</a></li>";
+					listElem="<li class=\"wdmatch\">"
+					listElemContent = "<a href=\"https://wiki.openstreetmap.org/wiki/Key:wikidata\" target=\"_blank\" style=\"color:#ff0000\">wikidata</a> - <a href=\"https://www.wikidata.org/entity/"+feature.properties.tags[key]+"\"  target=\"_blank\" style=\"color:#ff0000\">" + feature.properties.tags[key] + "</a></li>";
 					ttlExport+=indid+" <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.wikidata.org/entity/"+feature.properties.tags[key]+"> . \n"  
+				}else if(key=="wikipedia"){
+					if(feature.properties.tags[key].includes(":")){
+					   spll=feature.properties.tags[key].split(":")
+					   listElem="<li class=\"wdmatch\">"
+					   listElemContent+= "<a href=\"https://wiki.openstreetmap.org/wiki/Key:wikipedia\" target=\"_blank\" style=\"color:#1103D9\">wikipedia</a> - <a href=\"https://"+spll[0]+".wikipedia.org/wiki/"+spll[1]+"\"  target=\"_blank\" style=\"color:#1103D9\">" + feature.properties.tags[key] + "</a></li>";
+					ttlExport+=indid+" <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.wikidata.org/entity/"+feature.properties.tags[key]+"> . \n"  
+
+					   }else{
+					   listElem="<li class=\"wdmatch\">"
+					  listElemContent += "<a href=\"https://wiki.openstreetmap.org/wiki/Key:wikipedia\" target=\"_blank\" style=\"color:#1103D9\">wikipedia</a> - <a href=\"https://en.wikipedia.org/wiki/"+feature.properties.tags[key]+"\"  target=\"_blank\" style=\"color:#1103D9\">" + feature.properties.tags[key] + "</a></li>";
+					ttlExport+=indid+" <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.wikidata.org/entity/"+feature.properties.tags[key]+"> . \n"  
+
+					   }
+
 				}else if(key in osmToWikidataMap && (Object.keys(Object.values(osmToWikidataMap[key])[0])[0] in wdkeyset)){
-                                                popupContent+="<a style=\"color:green\" href=\""+Object.keys(osmToWikidataMap[key])[0]+"\"  target=\"_blank\">"+key+"</a>"
+                        listElemContent+="<a style=\"color:green\" href=\""+Object.keys(osmToWikidataMap[key])[0]+"\"  target=\"_blank\">"+key+"</a>"
 						wdval=Object.values(wdkeyset[Object.keys(Object.values(osmToWikidataMap[key])[0])[0]])[0].split(";")[1]
 						if(feature.properties.tags[key].includes("http")){
 							ttlExport+=indid+(feature.properties.tags[key].includes("http")?"<"+feature.properties.tags[key]+">":"\""+feature.properties.tags[key]+"\"")+" "+(wdval.includes("http")?"<"+wdval+">":"\""+wdval+"\"")+" . \n"  
                         }
                         if(wdval==feature.properties.tags[key]){
+								listElem="<li class=\"wdmatch\">"
 								if(feature.properties.tags[key].includes("http")){
-									popupContent = popupContent + " - <a href=\""+Object.keys(osmToWikidataMap[key])[0]+"\"  target=\"_blank\" style=\"color:green\">" + feature.properties.tags[key] + "</a></li>";
+									listElemContent += " - <a href=\""+Object.keys(osmToWikidataMap[key])[0]+"\"  target=\"_blank\" style=\"color:green\">" + feature.properties.tags[key] + "</a></li>";
 								}else{
-									popupContent = popupContent + " - <span style=\"color:green\">" + feature.properties.tags[key] + "</span></li>";
+									listElemContent += " - <span style=\"color:green\">" + feature.properties.tags[key] + "</span></li>";
 								}
                                 
                         }else{
 							if(feature.properties.tags[key].includes("http")){
-								popupContent = popupContent + " - <a href=\""+Object.keys(osmToWikidataMap[key])[0]+"\"  target=\"_blank\" style=\"color:orange\">" + feature.properties.tags[key] + "</a>" 
+								listElem="<li class=\"wdconflict\">"
+								listElemContent += " - <a href=\""+Object.keys(osmToWikidataMap[key])[0]+"\"  target=\"_blank\" style=\"color:orange\">" + feature.properties.tags[key] + "</a>" 
 							}else{
-								popupContent = popupContent + " - <span style=\"color:orange\">" + feature.properties.tags[key] + "</span>";
+								listElem="<li class=\"wdconflict\">"
+								listElemContent += " - <span style=\"color:orange\">" + feature.properties.tags[key] + "</span>";
 							}
 							if(wdval.includes("http")){
-								popupContent +=" | <a href=\""+wdval+"\" target=\"_blank\">"+wdval+"</a></li>";
+								listElem="<li class=\"equivfound\">"
+								listElemContent +=" | <a href=\""+wdval+"\" target=\"_blank\">"+wdval+"</a></li>";
 							}else{
-								popupContent +=" | <span style=\"color:orange\">"+wdval+"</span></li>";
+								listElem="<li class=\"equivfound\">"
+								listElemContent +=" | <span style=\"color:orange\">"+wdval+"</span></li>";
 							}
                    }
                 }else if(key in osmToWikidataMap && feature.properties.tags[key] in osmToWikidataMap[key] && "http://www.wikidata.org/entity/P31" in wdkeyset && Object.values(wdkeyset["http://www.wikidata.org/entity/P31"])[0].substring(0,Object.values(wdkeyset["http://www.wikidata.org/entity/P31"])[0].indexOf(";"))==Object.keys(osmToWikidataMap[key][feature.properties.tags[key]])[0]){
-					 popupContent+="<a style=\"color:green\" href=\""+Object.keys(osmToWikidataMap[key])[0]+"\"  target=\"_blank\">"+key+"</a>"
+					listElemContent+="<a style=\"color:green\" href=\""+Object.keys(osmToWikidataMap[key])[0]+"\"  target=\"_blank\">"+key+"</a>"
 					if(feature.properties.tags[key].includes("http")){
-						popupContent = popupContent + " - <a href=\""+Object.keys(osmToWikidataMap[key])[0]+"\"  target=\"_blank\" style=\"color:green\">" + feature.properties.tags[key] + "</a></li>";
+						listElem="<li class=\"wdmatch\">"
+						listElemContent += " - <a href=\""+Object.keys(osmToWikidataMap[key])[0]+"\"  target=\"_blank\" style=\"color:green\">" + feature.properties.tags[key] + "</a></li>";
 					}else{
-						popupContent = popupContent + " - <a href=\""+Object.keys(osmToWikidataMap[key][feature.properties.tags[key]])[0]+"\" target=\"_blank\" style=\"color:green\">" + feature.properties.tags[key] + "</a></li>";
+						listElem="<li class=\"wdmatch\">"	
+						listElemContent += " - <a href=\""+Object.keys(osmToWikidataMap[key][feature.properties.tags[key]])[0]+"\" target=\"_blank\" style=\"color:green\">" + feature.properties.tags[key] + "</a></li>";
 					}
 				}else if(key in osmToWikidataMap){
 						var color="orange"
-                        popupContent+="<a style=\"color:"+color+"\" href=\"https://wiki.openstreetmap.org/wiki/Key:"+key+"\" target=\"_blank\">"+key+"</a>"
-                                        if(feature.properties.tags[key].includes(".jpg") || feature.properties.tags[key].includes(".JPG") || feature.properties.tags[key].includes(".svg") || feature.properties.tags[key].includes(".SVG")
+						listElem="<li class=\"conflict\">"
+                        listElemContent+="<a style=\"color:"+color+"\" href=\"https://wiki.openstreetmap.org/wiki/Key:"+key+"\" target=\"_blank\">"+key+"</a>"
+                  if(feature.properties.tags[key].includes(".jpg") || feature.properties.tags[key].includes(".JPG") || feature.properties.tags[key].includes(".svg") || feature.properties.tags[key].includes(".SVG")
 						|| feature.properties.tags[key].includes(".png") || feature.properties.tags[key].includes(".PNG") || feature.properties.tags[key].includes(".gif") || feature.properties.tags[key].includes(".GIF")){
-						popupContent+=" - <a href=\""+feature.properties.tags[key]+"\" target=\"_blank\"><img src=\""+feature.properties.tags[key].replace("http","https")+"\" height=\"30\" width=\"30\"></a></li>"			
+						listElemContent+=" - <a href=\""+feature.properties.tags[key]+"\" target=\"_blank\"><img src=\""+feature.properties.tags[key].replace("http","https")+"\" height=\"30\" width=\"30\"></a></li>"			
 					}else if(feature.properties.tags[key].includes("http")){
-						popupContent = popupContent + " - <a href=\""+feature.properties.tags[key]+"\" target=\"_blank\">" + feature.properties.tags[key] + "</a></li>";
+						listElemContent += " - <a href=\""+feature.properties.tags[key]+"\" target=\"_blank\">" + feature.properties.tags[key] + "</a></li>";
 					}else if(feature.properties.tags[key].startsWith("www.")){
-						popupContent+=" - <a href=\"https://"+feature.properties.tags[key]+"\" target=\"_blank\">"+feature.properties.tags[key]+"</a></li>"
+						console.log(JSON.stringify(osmToWikidataMap))
+						console.log(Object.keys(osmToWikidataMap[key][""])[0])
+						listElemContent+=" - <a href=\"https://"+feature.properties.tags[key]+"\" target=\"_blank\" style=\"color:orange\">"+feature.properties.tags[key]+"</a> | <a href=\"https://"+wdkeyset[Object.keys(osmToWikidataMap[key][""])[0]]+"\" target=\"_blank\" style=\"color:orange\">"+wdkeyset[Object.keys(osmToWikidataMap[key][""])[0]]+"</a></li>"
 					}else{
-						popupContent = popupContent + " - " + feature.properties.tags[key] + "</li>";
+						listElemContent += " - " + feature.properties.tags[key] + "</li>";
 					}
                 }else{
-                    popupContent+="<a href=\"https://wiki.openstreetmap.org/wiki/Key:"+key+"\" target=\"_blank\"style=\"color:black;text-decoration: none;\">"+key+"</a>"
-				if(key.includes("P625"))
-					wdcoords=wdkeyset[key]
+					listElem="<li class=\"nomatch\">"
+                    listElemContent+="<a href=\"https://wiki.openstreetmap.org/wiki/Key:"+key+"\" target=\"_blank\"style=\"color:black;text-decoration: none;\">"+key+"</a>"
 			if(feature.properties.tags[key].includes(".jpg") || feature.properties.tags[key].includes(".JPG") || feature.properties.tags[key].includes(".svg") || feature.properties.tags[key].includes(".SVG")
 				|| feature.properties.tags[key].includes(".png") || feature.properties.tags[key].includes(".PNG") || feature.properties.tags[key].includes(".gif") || feature.properties.tags[key].includes(".GIF")){
-			    	popupContent+=" - <a href=\""+feature.properties.tags[key]+"\" target=\"_blank\"><img src=\""+feature.properties.tags[key].replace("http","https")+"\" height=\"30\" width=\"30\"></a></li>"			
+			    	listElemContent+=" - <a href=\""+feature.properties.tags[key]+"\" target=\"_blank\"><img src=\""+feature.properties.tags[key].replace("http","https")+"\" height=\"30\" width=\"30\"></a></li>"			
 		    }else if(feature.properties.tags[key].includes("http")){
-					popupContent = popupContent + " - <a href=\""+feature.properties.tags[key]+"\" target=\"_blank\">" + feature.properties.tags[key] + "</a></li>";
+					listElemContent += " - <a href=\""+feature.properties.tags[key]+"\" target=\"_blank\">" + feature.properties.tags[key] + "</a></li>";
 		    }else if(feature.properties.tags[key].startsWith("www.")){
-			    	popupContent+="<a href=\"https://"+feature.properties.tags[key]+"\" target=\"_blank\">"+feature.properties.tags[key]+"</a></li>"
+			    	listElemContent+="<a href=\"https://"+feature.properties.tags[key]+"\" target=\"_blank\">"+feature.properties.tags[key]+"</a></li>"
 			}else{
-					popupContent = popupContent + " - " + feature.properties.tags[key] + "</li>";
+					listElemContent += " - " + feature.properties.tags[key] + "</li>";
 		    }
                      
                 }
+			popupContent+=listElem+listElemContent
               });
-              popupContent = popupContent + "</ul>"
+              popupContent += "</ul>"
 			  //alert(wdkeyset)
-			  if(feature.properties.tags["wikidata"]!== undefined){
-              popupContent+="Wikidata Items: "/*<b>"+Object.values(wdkeyset["rdfs:label"])[0]+"</b>*/+"<ul>"
+			   if(feature.properties.tags["wikidata"]!== undefined){
+				popupContent+="<b>Wikidata Items:</b> <a href=\"#\" onclick=\"toggle_visibility('wd_"+feature.properties.id+"')\">["+Object.keys(wdkeyset).length+"]</a><br/><ul id=\"wd_"+feature.properties.id+"\">"/*<b>"+Object.values(wdkeyset["rdfs:label"])[0]+"</b>*/
 			  }
-			  var wdcoords;
+			wdcoords=""
               for(key in wdkeyset){
+
 					//if(key=="rdfs:label")
 					//	continue;
 					var isgreen=false;
                     giventag=""
+				  listElem="<li "
+				  listElemContent=""
+				  console.log(key)
+				  if(key.includes("P625")){
+					wdcoords=wdkeyset[key]
+				  }
                   if(!(Object.values(wdkeyset[key])[0].includes("statement"))){
                             spl=Object.values(wdkeyset[key])[0].split(";")
 							wdval=spl[1]
@@ -393,7 +469,8 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 									tags=Object.keys(wikidataToOSMMap[spl[0]][0])[0].split("=")
 									//alert(JSON.stringify(tags))
 									if(tags[0] in feature.properties.tags && feature.properties.tags[tags[0]]==tags[1]){
-										popupContent+="<li><a href=\""+key+"\" target=\"_blank\" style=\"color:green\">"+Object.keys(wdkeyset[key])[0]+"</a> - "
+										listElem="<li link=\""+tags[0]+"\" "
+										listElemContent+="<a href=\""+key+"\" target=\"_blank\" style=\"color:green\">"+Object.keys(wdkeyset[key])[0]+"</a> - "
 										isgreen=true;
 									}
 								}
@@ -405,51 +482,71 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 								for(equiv in Object.values(wikidataToOSMMap[key])[0]){
 								
 									if(feature.properties.tags[equiv]){
-										popupContent+="<li><a href=\""+key+"\" target=\"_blank\" style=\"color:green\">"+Object.keys(wdkeyset[key])[0]+"</a> - "
+										listElem="<li link=\""+equiv+"\" "
+										listElemContent+="<a href=\""+key+"\" target=\"_blank\" style=\"color:green\">"+Object.keys(wdkeyset[key])[0]+"</a> - "
 										giventag=feature.properties.tags[equiv]
 										finished=true;
 									}
 								}
 								if(!finished){
-									popupContent+="<li><a href=\""+key+"\" target=\"_blank\" style=\"color:orange\">"+Object.keys(wdkeyset[key])[0]+"</a> - "
+									console.log(Object.keys(Object.values(wikidataToOSMMap[key])[0])[0])
+									listElem="<li link=\""+Object.keys(Object.values(wikidataToOSMMap[key])[0])[0]+"\" "
+									listElemContent+="<a href=\""+key+"\" target=\"_blank\" style=\"color:orange\">"+Object.keys(wdkeyset[key])[0]+"</a> - "
 								}
 							}else{
-                                    popupContent+="<li><a href=\""+key+"\" target=\"_blank\">"+Object.keys(wdkeyset[key])[0]+"</a> - "
+									listElem="<li "
+                                    listElemContent+="<a href=\""+key+"\" target=\"_blank\">"+Object.keys(wdkeyset[key])[0]+"</a> - "
                             }
 			    if(spl[0].includes(".jpg") || spl[0].includes(".JPG")|| spl[0].includes(".svg") || spl[0].includes(".SVG")
 				|| spl[0].includes(".png") || spl[0].includes(".PNG")){
-			    	popupContent+="<a href=\""+spl[0]+"\" target=\"_blank\"";
-					popupContent+="><img src=\""+spl[1].replace("http","https")+"\" height=\"30\" width=\"30\"></a></li>"
+					listElem=listElem.trim();
+					listElem+=">"
+			    	listElemContent+="<a href=\""+spl[0]+"\" target=\"_blank\"";
+					if(!spl[1].includes("https")){
+						listElemContent+="><img src=\""+spl[1].replace("http","https")+"\" height=\"30\" width=\"30\"></a></li>"
+					}else{
+						listElemContent+="><img src=\""+spl[1]+"\" height=\"30\" width=\"30\"></a></li>"
+					}
 					ttlExport+=indid+" <"+key+"> <"+spl[0]+"> . \n"  
 			    }else if(spl[0].includes("http")){
 					if((finished && giventag==spl[1]) || isgreen){
-						popupContent+="<a href=\""+spl[0]+"\" target=\"_blank\" style=\"color:green\">"+spl[1]+"</a></li>"
+						listElem+=" class=\"osmmatch\">"
+						listElemContent+="<a href=\""+spl[0]+"\" target=\"_blank\" style=\"color:green\">"+spl[1]+"</a></li>"
 					}else if(finished && giventag!=spl[1] && giventag!=""){
-						popupContent+="<a href=\""+spl[0]+"\" target=\"_blank\" style=\"color:orange\">"+spl[1]+"</a> | "+(giventag.includes("http")?"<a href=\""+giventag+"\" style=\"color:orange\">"+giventag+"["+editDistance(giventag,spl[1])+"]</a>":"<span style=\"color:orange\">"+giventag+" ["+editDistance(giventag,spl[1])+"]</span>")+"</li>"
+						listElem+=" class=\"osmconflict\">"
+						listElemContent+="<a href=\""+spl[0]+"\" target=\"_blank\" style=\"color:orange\">"+spl[1]+"</a> | "+(giventag.includes("http")?"<a href=\""+giventag+"\" style=\"color:orange\">"+giventag+"</a>":"<span style=\"color:orange\">"+giventag+"</span>")+"</li>"
 					}else{
-						popupContent+="<a href=\""+spl[0]+"\" target=\"_blank\">"+spl[1]+"</a></li>"
+						listElem+=" class=\"nomatch\">"
+						listElemContent+="<a href=\""+spl[0]+"\" target=\"_blank\">"+spl[1]+"</a></li>"
 					}	
 					ttlExport+=indid+" <"+key+"> <"+spl[0]+"> . \n"  
 			    }else if(spl[0].startsWith("www.")){
 					if((finished && giventag==spl[1]) || isgreen){
-						popupContent+="<a href=\"https://"+spl[0]+"\" target=\"_blank\" style=\"color:green\">"+spl[1]+"</a></li>"
+						listElem+=" class=\"osmmatch\">"
+						listElemContent+="<a href=\"https://"+spl[0]+"\" target=\"_blank\" style=\"color:green\">"+spl[1]+"</a></li>"
 					}else if(finished && giventag!=spl[1] && giventag!=""){
-						popupContent+="<a href=\"https://"+spl[0]+"\" target=\"_blank\" style=\"color:orange\">"+spl[1]+"</a> | "+(giventag.includes("http")?"<a href=\""+giventag+"\" style=\"color:orange\">"+giventag+" ["+editDistance(giventag,spl[1])+"]</a>":"<span style=\"color:orange\">"+giventag+" ["+editDistance(giventag,spl[1])+"]</span>")+"</li>"
+						listElem+=" class=\"osmconflict\">"
+						listElemContent+="<a href=\"https://"+spl[0]+"\" target=\"_blank\" style=\"color:orange\">"+spl[1]+"</a> | "+(giventag.includes("http")?"<a href=\""+giventag+"\" style=\"color:orange\">"+giventag+"</a>":"<span style=\"color:orange\">"+giventag+"</span>")+"</li>"
 					}else{
-						popupContent+="<a href=\"https://"+spl[0]+"\" target=\"_blank\">"+spl[1]+"</a></li>"
+						listElem+=" class=\"nomatch\">"
+						listElemContent+="<a href=\"https://"+spl[0]+"\" target=\"_blank\">"+spl[1]+"</a></li>"
 					}		
 					ttlExport+=indid+" <"+key+"> <"+spl[0]+"> . \n"  
 			    }else{
 					if((finished && giventag==spl[1]) || isgreen){
-						popupContent+="<span style=\"color:green\">"+spl[1]+"</span></li>"
+						listElem+=" class=\"osmmatch\">"
+						listElemContent+="<span style=\"color:green\">"+spl[1]+"</span></li>"
 					}else if(finished && giventag!=spl[1] && giventag!=""){
-						popupContent+="<span style=\"color:orange\">"+spl[1]+" | "+giventag+" ["+editDistance(giventag,spl[1])+"]</span></li>"
+						listElem+=" class=\"osmconflict\">"
+						listElemContent+="<span style=\"color:orange\">"+spl[1]+" | "+giventag+"</span></li>"
 					}else{
-						popupContent+=spl[1]+"</li>"
+						listElem+=" class=\"nomatch\">"
+						listElemContent+=spl[1]+"</li>"
 					}
 			    	ttlExport+=indid+" <"+key+">  \""+spl[0]+"\" . \n"  
 			    }
                         }
+				popupContent+=listElem+listElemContent
               }
               popupContent+="</ul>"
 		    var greyIcon = new L.Icon({
@@ -478,7 +575,9 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 			  if(officialdata!=null && "geometry" in officialdata){
 				dist=getDistance(feature.geometry,officialdata["geometry"])
 				if(dist!=""){
-					popupContent+="Distance: "+dist.toFixed(2)+"m"
+					popupContent+="<b>Metrics:</b> <a href=\"#\" onclick=\"toggle_visibility('"+feature.properties.id+"_metrics')\">[1]</a><br/><ul id=\""+feature.properties.id+"_metrics\">"/*<b>"+Object.values(wdkeyset["rdfs:label"])[0]+"</b>*/
+					popupContent+="<li>Distance: "+dist.toFixed(2)+"m</li>"
+					popupContent+="</ul>"
 				}
 			  } 
 			  if(document.getElementById('popupmode').checked){
@@ -759,6 +858,19 @@ function zoomAndReload(){
 			loadWDItems();
         }
 }
+
+function toggle_visibility(id) 
+  {
+      var e = document.getElementById(id);
+      if (e.style.display == 'block' || e.style.display=='')
+      {
+          e.style.display = 'none';
+      }
+      else 
+      {
+          e.style.display = 'block';
+      }
+  }
 
 </script>
 
