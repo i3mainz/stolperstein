@@ -586,7 +586,11 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 				layer.on('click', function (e) {
 				$('#contentdesc').html(popupContent)
 				});
-				layer.bindPopup("<a href=\"https://www.openstreetmap.org/"+feature.properties.type+"/"+feature.properties.id+"\" target=\"_blank\">"+ feature.properties.type + "/" + feature.properties.id + "</b></a>",{maxWidth : 560});
+				var bindcontent="OSM: <a href=\"https://www.openstreetmap.org/"+feature.properties.type+"/"+feature.properties.id+"\" target=\"_blank\">"+ feature.properties.type + "/" + feature.properties.id + "</b></a><br/>"
+				if(feature.properties.tags["wikidata"]!== undefined){
+					bindcontent+="Wikidata: <a href=\"https://www.wikidata.org/entity/"+feature.properties.tags["wikidata"]+"\" target=\"_blank\">"+feature.properties.tags["wikidata"]+"</b></a><br/>"
+				}
+				layer.bindPopup(bindcontent,{maxWidth : 560});
 			  }
              // console.log(ttlExport)
             }
