@@ -620,11 +620,21 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 				layer.on('click', function (e) {
 				$('#contentdesc').html(popupContent)
 				});
-				var bindcontent="OSM: <a href=\"https://www.openstreetmap.org/"+feature.properties.type+"/"+feature.properties.id+"\" target=\"_blank\">"+ feature.properties.type + "/" + feature.properties.id + "</b></a><br/>"
-				if(feature.properties.tags["wikidata"]!== undefined){
-					bindcontent+="Wikidata: <a href=\"https://www.wikidata.org/entity/"+feature.properties.tags["wikidata"]+"\" target=\"_blank\">"+feature.properties.tags["wikidata"]+"</b></a><br/>"
+				var bindcontent;
+				if(wdkeyset["http://www.wikidata.org/entity/P18"]){
+					spl=Object.values(wdkeyset["http://www.wikidata.org/entity/P18"])[0].split(";")
+					var imgurl=spl[1]
+					if(imgurl.includes("http://")){
+						imgurl=imgurl.replace("http://","https://")
+					}
+					bindcontent="<table><tr><td rowspan=\"2\"><img src=\""+imgurl+"\" width=\"100\" height=\"100\"/></td><td>OSM: <a href=\"https://www.openstreetmap.org/"+feature.properties.type+"/"+feature.properties.id+"\" target=\"_blank\">"+ feature.properties.type + "/" + feature.properties.id + "</b></a></td></tr>"
+				}else{
+					bindcontent="<table><tr><td rowspan=\"2\"></td><td>OSM: <a href=\"https://www.openstreetmap.org/"+feature.properties.type+"/"+feature.properties.id+"\" target=\"_blank\">"+ feature.properties.type + "/" + feature.properties.id + "</b></a></td></tr>"
 				}
-				layer.bindPopup(bindcontent,{maxWidth : 560});
+				if(feature.properties.tags["wikidata"]!== undefined){					
+					bindcontent+="<tr><td>Wikidata: <a href=\"https://www.wikidata.org/entity/"+feature.properties.tags["wikidata"]+"\" target=\"_blank\">"+feature.properties.tags["wikidata"]+"</b></a></td></tr>"
+				}
+				layer.bindPopup(bindcontent+"</table>",{maxWidth : 600});
 			  }
              // console.log(ttlExport)
             }
