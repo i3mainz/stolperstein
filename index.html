@@ -254,7 +254,7 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
             counter+=1
             var officialdata=matchGeometryInGeoJSONSet(feature.geometry,window[$('#officialsetmenu').val()].features,"Name",feature.properties.tags["name"])
 			  console.log(JSON.stringify(officialdata))
-              popupContent = popupContent + "<b>" + feature.properties.type + "/" + feature.properties.id + "</b><br/>";
+              popupContent = popupContent + "<a href=\"https://www.openstreetmap.org/"+feature.properties.type+"/"+feature.properties.id+"\" target=\"_blank\">"+ feature.properties.type + "/" + feature.properties.id + "</b></a><br/>";
 			  coord="Coordinates: "+feature.geometry.type+"("+feature.geometry.coordinates[0]+" "+feature.geometry.coordinates[1]+")"
 			  popupContent+=trimcoords(coord,90)+"<br/>"
               var indid="<http://www.linkedgeodata.org/"+feature.properties.type+feature.properties.id+">";
@@ -586,7 +586,7 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 				layer.on('click', function (e) {
 				$('#contentdesc').html(popupContent)
 				});
-				layer.bindPopup("<b>"+feature.properties.type + "/" + feature.properties.id+"</b>",{maxWidth : 560});
+				layer.bindPopup("<a href=\"https://www.openstreetmap.org/"+feature.properties.type+"/"+feature.properties.id+"\" target=\"_blank\">"+ feature.properties.type + "/" + feature.properties.id + "</b></a>",{maxWidth : 560});
 			  }
              // console.log(ttlExport)
             }
