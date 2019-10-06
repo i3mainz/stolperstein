@@ -329,14 +329,16 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
 							}else if(osmkey in feature.properties.tags && officialdata.properties[keys[prop]]==valtocompare){
 								popupContent+="<li link=\""+osmkey+"\" class=\"osmmatch\"><span style=\"color:green;text-decoration:underline;\">"+keys[prop]+"</span> - <span style=\"color:green;text-decoration:underline;\">"+officialdata.properties[keys[prop]]+" (OSM)</span></li>"
 							}else if(wdkey in wdkeyset && officialdata.properties[keys[prop]]!=wdvaltocompare){
-								popupContent+="<li link=\""+wdkey+"\" class=\"wdconflict\"><span style=\"color:green;text-decoration:underline;\">"+keys[prop]+"</span> - <span style=\"color:orange;text-decoration:underline;\">"+officialdata.properties[keys[prop]]+" | "+wdkeyset[wdkey]+" ["+editDistance(officialdata.properties[keys[prop]],wdkey)+"] (Wikidata)</span></li>"
+								spl=Object.values(wdkeyset[wdkey])[0].split(";")
+								popupContent+="<li link=\""+wdkey+"\" class=\"wdconflict\"><span style=\"color:green;text-decoration:underline;\">"+keys[prop]+"</span> - <span style=\"color:orange;text-decoration:underline;\">"+
+								officialdata.properties[keys[prop]]+" | "+spl[1]+" ["+editDistance(officialdata.properties[keys[prop]],wdkey)+"] (Wikidata)</span></li>"
                                 if(!(keys[prop] in tagToValues)){
                                     tagToValues[keys[prop]]={}
 								}
 								if(!(officialdata.properties[keys[prop]] in tagToValues[keys[prop]])){
                                     tagToValues[keys[prop]][officialdata.properties[keys[prop]]]={}
 								}
-								tagToValues[keys[prop]][officialdata.properties[keys[prop]]]["wikidata"]={"key":wdkey,"value":wdkeyset[wdkey],"distance":editDistance(officialdata.properties[keys[prop]].toLowerCase(),wdkeyset[wdkey].toLowerCase()),"substring":wdkeyset[wdkey].toLowerCase().includes(officialdata.properties[keys[prop]].toLowerCase())}
+								tagToValues[keys[prop]][officialdata.properties[keys[prop]]]["wikidata"]={"key":wdkey,"value":spl[1],"distance":editDistance(officialdata.properties[keys[prop]].toLowerCase(),wdkeyset[wdkey].toLowerCase()),"substring":wdkeyset[wdkey].toLowerCase().includes(officialdata.properties[keys[prop]].toLowerCase())}
 							}else if(wdkey in wdkeyset && officialdata.properties[keys[prop]]==wdvaltocompare){
 								popupContent+="<li link=\""+wdkey+"\" class=\"wdmatch\"><span style=\"color:green;text-decoration:underline;\">"+keys[prop]+"</span> - <span style=\"color:green;text-decoration:underline;\">"+officialdata.properties[keys[prop]]+" (Wikidata)</span></li>"
                                 console.log(tagToValues)
@@ -640,6 +642,42 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
             }
           }).addTo(map);
 		  resultLayerCollection.push(resultLayer);
+		  		  console.log("NOW MATCHING SECOND LAYER")
+		 var officiallayer2=L.geoJSON(window[$('#officialsetmenu').val()].features,{
+		filter: function(feature,layer){
+			console.log(feature.geometry)
+			if(map.getBounds().contains(L.latLng(feature.geometry.coordinates[1], feature.geometry.coordinates[0]))){
+				var res=matchGeometryInGeoJSONSet(feature.geometry,resultAsGeojson.features)
+				console.log("RES!")
+				console.log(res)
+				if(res==null){
+					return true;
+				}
+				return false;
+			}
+			//return false;
+		},
+		pointToLayer: function(feature, latlng){
+			 var greenIcon = new L.Icon({
+                                        iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                                        iconSize: [25, 41],
+                                        iconAnchor: [12, 41],
+                                        popupAnchor: [1, -34],
+                                        shadowSize: [41, 41]
+                                    });
+            return L.marker(latlng,{icon: greenIcon})
+		},
+		onEachFeature: function (feature, layer) {
+	 var popup="Official Data<br/><ul>"
+	 for(prop in feature.properties){
+	 	popup+="<li>"+prop+" - "+feature.properties[prop]+"</li>"
+	 }
+	 popup+="</ul>"
+	 console.log(feature)
+         layer.bindPopup(popup);
+     }}).addTo(map);
+	 	resultLayerCollection.push(officiallayer2)
         });
     }
 }
