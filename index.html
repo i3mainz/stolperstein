@@ -595,16 +595,23 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
                     popupContent+="</ul></li>"    
               }
               popupContent+="</ul>"
+	      var avgPercentage=(averagePercentage(osmcompleteness["completenessScore"],wdcompleteness["completenessScore"])/100).toFixed(0)
               var greyIcon = new L.AwesomeNumberMarkers({
-                      number: (averagePercentage(osmcompleteness["completenessScore"],wdcompleteness["completenessScore"])/100).toFixed(0)+"%", 
+                      number: avgPercentage+"%", 
                       markerColor: "gray"
                   });
             var greenIcon = new L.AwesomeNumberMarkers({
-                      number: (averagePercentage(osmcompleteness["completenessScore"],wdcompleteness["completenessScore"])/100).toFixed(0)+"%", 
+                      number: avgPercentage+"%", 
                       markerColor: "orange"
                   })
+	    var perfectIcon = new L.AwesomeNumberMarkers({
+                      number: avgPercentage+"%", 
+                      markerColor: "green"
+                  })
 			  if(feature.properties.tags["wikidata"]!== undefined){						
-						layer.setIcon(greyIcon);
+				layer.setIcon(greyIcon);
+			  }else if(!("wikidata" in feature.properties.tags) && avgPercentage>=100){
+				layer.setIcon(perfectIcon);
 			  }else if(!("wikidata" in feature.properties.tags)){
 				layer.setIcon(greenIcon);
 			  }
