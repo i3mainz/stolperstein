@@ -595,8 +595,8 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
                     popupContent+="</ul></li>"    
               }
               popupContent+="</ul>"
-	      var avgPercentage=(averagePercentage(osmcompleteness["completenessScore"],wdcompleteness["completenessScore"])/100).toFixed(0)
-              var greyIcon = new L.AwesomeNumberMarkers({
+			var avgPercentage=(averagePercentage(osmcompleteness["completenessScore"],wdcompleteness["completenessScore"])/100).toFixed(0)
+            var greyIcon = new L.AwesomeNumberMarkers({
                       number: avgPercentage+"%", 
                       markerColor: "gray"
                   });
@@ -604,14 +604,15 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
                       number: avgPercentage+"%", 
                       markerColor: "orange"
                   })
-	    var perfectIcon = new L.AwesomeNumberMarkers({
+			var perfectIcon = new L.AwesomeNumberMarkers({
                       number: avgPercentage+"%", 
                       markerColor: "green"
                   })
-			  if(feature.properties.tags["wikidata"]!== undefined){						
-				layer.setIcon(greyIcon);
-			  }else if(!("wikidata" in feature.properties.tags) && avgPercentage>=100){
+			  console.log(avgPercentage)
+			  if(feature.properties.tags["wikidata"]!== undefined && avgPercentage>=100){
 				layer.setIcon(perfectIcon);
+			  }else if(feature.properties.tags["wikidata"]!== undefined){						
+				layer.setIcon(greyIcon);
 			  }else if(!("wikidata" in feature.properties.tags)){
 				layer.setIcon(greenIcon);
 			  }
