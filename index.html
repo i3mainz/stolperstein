@@ -1,12 +1,13 @@
 <html>
 <head><title>Stolperstein Map</title>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css" />
 <link rel="stylesheet" href="css/leaflet-search.css" />
 <link rel="stylesheet" href="css/numbermarkers.css" />
+<link rel="stylesheet" href="css/leaflet_legend.css" />
+<link rel="stylesheet" href="https://cdn.bootcss.com/leaflet.fullscreen/1.5.1/Control.FullScreen.css"/>
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.3.1/dist/leaflet.js"></script>
@@ -31,11 +32,38 @@ var prefixlist="@prefix owl: <http://www.w3.org/2002/07/owl#> .\n @prefix foaf: 
 var overlayMaps={}
 var ttlExport="";
 var minMapZoom=12;
+var htmlLegend1;
 var resultLayerCollection=[]
 var combinedCounter=0
 var loaded=false;
 function saveToOWL(){
     saveTextAsFile();
+}
+
+ function createColorLegendForLayer(){
+		elements=[]
+		elements.push({"label":"Missing","html":"","style":{"background-color":"red","width":"10px","height":"10px"}})
+		elements.push({"label":"In OSM and Wikidata","html":"","style":{"background-color":"black","width":"10px","height":"10px"}})
+		elements.push({"label":"Only in OSM","html":"","style":{"background-color":"orange","width":"10px","height":"10px"}})
+		elements.push({"label":"Complete","html":"","style":{"background-color":"green","width":"10px","height":"10px"}})
+		console.log("elements: "+elements)
+		return elements;
+  }
+
+function createLegend(layer){
+	 htmlLegend1 =L.control.htmllegend({
+        position: 'bottomright',
+        legends: [{
+            name: 'Map Legend',
+            layer: layer,
+            elements: createColorLegendForLayer()}],
+			collapseSimple:true,
+			detectStretched:true
+    });
+	console.log("legend")
+	console.log(htmlLegend1)
+		console.log(map)
+	htmlLegend1.addTo(map);
 }
 
 function saveTextAsFile()
@@ -650,6 +678,7 @@ $.get(buildOverpassApiUrl(map,"memorial:type","stolperstein"), function (osmData
             }
           }).addTo(map);
 		  resultLayerCollection.push(resultLayer);
+		  createLegend(resultLayer);
 		  		  console.log("NOW MATCHING SECOND LAYER")
 		 var officiallayer2=L.geoJSON(window[$('#officialsetmenu').val()].features,{
 		filter: function(feature,layer){
@@ -973,8 +1002,8 @@ function toggle_visibility(id)
 <h2 align="center">Stolperstein Mapview</h2>
 <div class="container">
   <div class="row">
-    <div class="left col-sm-9">
-	<div id="mapid" style="height:500px;width:800px;border:5px solid black;">
+    <div class="left col-sm-9" id="mapid" style="border:5px solid black;">
+	<!--<div  style="height:500px;width:800px;border:5px solid black;">-->
 <script>
 var wikidataToOSMMap={}
 var osmToWikidataMap={}
@@ -1012,7 +1041,7 @@ getMatchingWikiDataOSMAttributes();
 
 	var layer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-		maxZoom: 20
+		maxZoom: 19
 });
 
 var officiallayer=L.geoJSON(stolpersteine,{
@@ -1065,9 +1094,10 @@ attribution: '&copy; Bundesamt f&uuml;r Kartographie und Geod&auml;sie 2017, <a 
 var layercontrol=L.control.layers(baseMaps,overlayMaps).addTo(map);
 loaded=true;
 zoomAndReload();
+createLegend(layer);
 </script>
 </div>
-</div>
+<!--</div>-->
     <div class="left col-sm-3" id="contentdesc" style="height:500px;overflow-y: scroll;">
 	</div>
 	</div>
