@@ -1007,7 +1007,7 @@ function toggle_visibility(id)
 <script>
 var wikidataToOSMMap={}
 var osmToWikidataMap={}
-	var map = L.map('mapid',{fullscreenControl: true,fullscreenControlOptions: {position: 'topleft'}}).setView([49.998889, 8.274167], 16).locate({setView: true, maxZoom: 22});
+	var map = L.map('mapid',{fullscreenControl: true,fullscreenControlOptions: {position: 'topleft'}}).setView([49.998889, 8.274167], 16);
 	map.addControl( new L.Control.Search({
 		url: 'https://nominatim.openstreetmap.org/search?format=json&q={s}',
 		jsonpParam: 'json_callback',
@@ -1094,7 +1094,6 @@ attribution: '&copy; Bundesamt f&uuml;r Kartographie und Geod&auml;sie 2017, <a 
 var layercontrol=L.control.layers(baseMaps,overlayMaps).addTo(map);
 loaded=true;
 zoomAndReload();
-createLegend(layer);
 </script>
 </div>
 <!--</div>-->
